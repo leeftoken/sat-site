@@ -15,3 +15,6 @@ Live data is fetched in the browser every 60 s from public WAX RPC (greymass →
 3. Deploy. Every push to `main` redeploys; PRs get preview URLs.
 
 Content rules: no keys or secrets, never link t.me/leeftoken (community is t.me/leefmaincorp), contracts are unaudited — keep the not-financial-advice note.
+
+## CI
+A GitHub Actions build check is in `ci/github-actions-ci.yml`. Move it to `.github/workflows/ci.yml` (the bot token lacks the `workflow` scope to add it). Vercel also fails the deploy if `npm run build` fails.
