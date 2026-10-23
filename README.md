@@ -18,3 +18,6 @@ Content rules: no keys or secrets, never link t.me/leeftoken (community is t.me/
 
 ## CI
 A GitHub Actions build check is in `ci/github-actions-ci.yml`. Move it to `.github/workflows/ci.yml` (the bot token lacks the `workflow` scope to add it). Vercel also fails the deploy if `npm run build` fails.
+
+## Audit
+23 Oct 2026 review of this site against the live WAX and Alcor reads: [AUDIT.md](AUDIT.md).
