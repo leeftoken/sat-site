@@ -1,5 +1,7 @@
 # sat-site
 
+Live: https://smart-ass-trading.vercel.app
+
 Info site for SAT (Smart Ass Trading), the token behind LEEF Trader on WAX. Vite + vanilla TypeScript, mobile-first, no backend.
 
 Live data is fetched in the browser every 60 s from public WAX RPC (greymass + eosusa queried in parallel and compared; aloha and eosphere break ties or stand in when one fails; pink.gg dropped) and the Alcor API (both send `Access-Control-Allow-Origin: *`):
@@ -20,7 +22,7 @@ Content rules: no keys or secrets, never link t.me/leeftoken (community is t.me/
     npm test        # vitest
     npm run build
 
-The GitHub Actions workflow (runs both) is in `ci/github-actions-ci.yml`: the bot token lacks the `workflow` scope, so move it to `.github/workflows/ci.yml` by hand (GitHub web UI) to switch it on. Refresh pauses in hidden tabs and never overlaps. Security headers (CSP allowing only the WAX/Alcor API hosts) are in `vercel.json`. Share-card URLs assume the site is served at `https://sat-site.vercel.app`; change them in `index.html` if the domain differs.
+The GitHub Actions workflow (runs both) is in `ci/github-actions-ci.yml`: the bot token lacks the `workflow` scope, so move it to `.github/workflows/ci.yml` by hand (GitHub web UI) to switch it on. Refresh pauses in hidden tabs and never overlaps. Security headers (CSP allowing only the WAX/Alcor API hosts) are in `vercel.json`. Share-card URLs assume the site is served at `https://smart-ass-trading.vercel.app`; change them in `index.html` if the domain differs.
 
 ## Audit
 23 Oct 2026 review of this site against the live WAX and Alcor reads: [AUDIT.md](AUDIT.md).
