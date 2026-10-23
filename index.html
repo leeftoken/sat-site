@@ -10,10 +10,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <meta property="og:title" content="SAT — Smart Ass Trading" />
 <meta property="og:description" content="SAT, the token behind LEEF Trader on WAX: live on-chain stats, tokenomics and the LEEF community airdrop." />
-<meta property="og:image" content="/sat-512.png" />
+<meta property="og:image" content="https://sat-site.vercel.app/sat-512.png" />
+<meta property="og:url" content="https://sat-site.vercel.app/" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:image" content="/sat-512.png" />
+<meta name="twitter:image" content="https://sat-site.vercel.app/sat-512.png" />
 <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
@@ -21,7 +22,7 @@
   <header>
     <h1 class="brand"><picture><source srcset="/sat-128.webp" type="image/webp" /><img src="/sat-128.png" width="64" height="64" alt="SAT logo" /></picture>SAT — Smart Ass Trading</h1>
     <p class="lead">SAT is the token behind the LEEF Trader bot, a sub-system of LEEF on WAX. Stats below are read live from WAX and Alcor.</p>
-    <p class="status" id="status">Loading live data…</p>
+    <p class="status" id="status" role="status" aria-live="polite">Loading live data…</p>
   </header>
 
   <nav class="toc">
@@ -29,7 +30,7 @@
   </nav>
 
   <section id="what"><h2>What SAT is</h2>
-    <p>SAT (Smart Ass Trading) is a WAX token tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and half goes to deepening SAT and LEEF liquidity on Alcor.</p>
+    <p>SAT (Smart Ass Trading) is a WAX token tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and <span data-k="lpshare">–</span> (live from the <code>splits</code> table) goes to deepening SAT and LEEF liquidity on Alcor.</p>
   </section>
 
   <section id="stats"><h2>Live stats</h2>
@@ -58,14 +59,27 @@
   </section>
 
   <section id="tokenomics"><h2>Tokenomics</h2>
-    <p class="muted">100,000,000 SAT max supply. No public sale and no minting beyond the cap.</p>
+    <h3>On-chain today (live)</h3>
+    <dl class="props">
+      <dt>Max supply</dt><dd data-k="t-max">–</dd>
+      <dt>Issued</dt><dd data-k="t-issued">–</dd>
+      <dt>Not issued</dt><dd data-k="t-mintable">–</dd>
+      <dt>In locked LP</dt><dd data-k="t-pool">–</dd>
+      <dt>Locked LP share</dt><dd data-k="t-locked">–</dd>
+      <dt>Airdrop</dt><dd data-k="t-admin">–</dd>
+      <dt>Other holders</dt><dd data-k="t-other">–</dd>
+    </dl>
+    <p class="muted">Share of max supply:</p>
+    <div class="bars" id="issued"></div>
+    <h3>Planned allocation (not issued yet)</h3>
+    <p class="note">Planned only. These shares describe how the team intends to use the full 100,000,000 SAT cap. Apart from the locked LP and the airdrop above, none of it has been minted, and the issuer multisig decides when (and whether) it is. There is no public sale and minting can never exceed the cap.</p>
     <div class="bars" id="alloc"></div>
-    <table><thead><tr><th>Share</th><th>Why</th></tr></thead><tbody>
-      <tr><td>35% locked LP</td><td>Over a third sits in locked liquidity, so trades move the price less</td></tr>
-      <tr><td>25% user rewards</td><td>Released over 4 years to bot users, not dumped at once</td></tr>
-      <tr><td>15% treasury</td><td>Held by the 2-of-3 multisig for running costs and new pools</td></tr>
-      <tr><td>15% team</td><td>Kept at or under 15% with vesting</td></tr>
-      <tr><td>10% community</td><td>Ties SAT to existing LEEF holders and founder NFT holders</td></tr>
+    <table><thead><tr><th>Planned share</th><th>Why</th></tr></thead><tbody>
+      <tr><td>35% locked LP (planned)</td><td>Target for locked liquidity over time, so trades move the price less</td></tr>
+      <tr><td>25% user rewards (planned)</td><td>Released over 4 years to bot users, not dumped at once</td></tr>
+      <tr><td>15% treasury (planned)</td><td>Held by the 2-of-3 multisig for running costs and new pools</td></tr>
+      <tr><td>15% team (planned)</td><td>Kept at or under 15% with vesting</td></tr>
+      <tr><td>10% community (planned)</td><td>Ties SAT to existing LEEF holders and founder NFT holders</td></tr>
     </tbody></table>
   </section>
 
@@ -83,7 +97,7 @@
 
   <section id="airdrop"><h2>LEEF community airdrop</h2>
     <dl class="props">
-      <dt>Amount</dt><dd>10,000,000 SAT, issued and held in smartaadmin1</dd>
+      <dt>Amount</dt><dd data-k="airdrop-amount">–</dd>
       <dt>Founder NFTs, 30%</dt><dd>Holders of LEEF Founders Token (collection <code>leeftokennft</code>, template 654718); exact split still being decided</dd>
       <dt>LEEF holders, 70%</dt><dd>By LEEF in wallet (×1), staked on leefstaker.io (×1.5) and in Alcor LEEF LP (×1.5)</dd>
       <dt>Minimum</dt><dd>100,000 LEEF</dd>
@@ -100,22 +114,22 @@
   </section>
 
   <section id="safety"><h2>Safety</h2>
-    <p class="note warn">Unaudited contracts. smartatrader went live on WAX mainnet on Oct 23 2026 with low caps and has not had an independent audit yet. Caps: 1% of a bucket per action, 5% per day, with a pause switch and a pool whitelist.</p>
+    <p class="note warn">Unaudited contracts. smartatrader went live on WAX mainnet on Oct 23 2026 with low caps and has not had an independent audit yet. Caps (live): <span data-k="caps">–</span>, with a pause switch and a pool whitelist.</p>
     <p class="muted">Not financial advice. SAT is a utility token for the bot, liquidity is thin, and prices can move a lot.</p>
   </section>
 
   <section id="links"><h2>Links</h2>
     <div class="cards">
-      <a href="https://leeftoken.io" target="_blank" rel="noopener">LEEF Token<span>leeftoken.io</span></a>
-      <a href="https://leefstaker.io" target="_blank" rel="noopener">LEEF Staker<span>leefstaker.io</span></a>
-      <a href="https://leef-trader.vercel.app" target="_blank" rel="noopener">LEEF Trader platform<span>leef-trader.vercel.app · SAT and About tabs</span></a>
-      <a href="https://wax.alcor.exchange/swap?input=LEEF-leefmaincorp&amp;output=SAT-sattoken1111" target="_blank" rel="noopener">Trade SAT/LEEF<span>alcor.exchange</span></a>
-      <a href="https://wax.alcor.exchange/analytics/pools/12905" target="_blank" rel="noopener">Pool 12905 analytics<span>alcor.exchange</span></a>
-      <a href="https://t.me/LEEF_Trader_Bot" target="_blank" rel="noopener">LEEF Trader bot<span>t.me · coming soon</span></a>
-      <a href="https://t.me/leefmaincorp" target="_blank" rel="noopener">LEEF community<span>t.me/leefmaincorp</span></a>
+      <a href="https://leeftoken.io" target="_blank" rel="noopener">LEEF Token<span>leeftoken.io</span><span class="sr-only"> (opens in a new tab)</span></a>
+      <a href="https://leefstaker.io" target="_blank" rel="noopener">LEEF Staker<span>leefstaker.io</span><span class="sr-only"> (opens in a new tab)</span></a>
+      <a href="https://leef-trader.vercel.app" target="_blank" rel="noopener">LEEF Trader platform<span>leef-trader.vercel.app · SAT and About tabs</span><span class="sr-only"> (opens in a new tab)</span></a>
+      <a href="https://wax.alcor.exchange/swap?input=LEEF-leefmaincorp&amp;output=SAT-sattoken1111" target="_blank" rel="noopener">Trade SAT/LEEF<span>alcor.exchange</span><span class="sr-only"> (opens in a new tab)</span></a>
+      <a href="https://wax.alcor.exchange/analytics/pools/12905" target="_blank" rel="noopener">Pool 12905 analytics<span>alcor.exchange</span><span class="sr-only"> (opens in a new tab)</span></a>
+      <a href="https://t.me/LEEF_Trader_Bot" target="_blank" rel="noopener">LEEF Trader bot<span>t.me · coming soon</span><span class="sr-only"> (opens in a new tab)</span></a>
+      <a href="https://t.me/leefmaincorp" target="_blank" rel="noopener">LEEF community<span>t.me/leefmaincorp</span><span class="sr-only"> (opens in a new tab)</span></a>
     </div>
   </section>
-  <footer>Data: public WAX RPC (greymass, eosusa, pink.gg) and the Alcor API. Refreshes every 60 s.</footer>
+  <footer>Data: public WAX RPC (greymass, eosusa, aloha, eosphere; two must agree) and the Alcor API. Refreshes every 60 s.</footer>
 </main>
 <script type="module" src="/src/main.ts"></script>
 </body>
