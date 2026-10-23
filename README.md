@@ -1,6 +1,6 @@
 # sat-site
 
-Info site for SAT (Smart Ass Trader), the token behind LEEF Trader on WAX. Vite + vanilla TypeScript, mobile-first, no backend.
+Info site for SAT (Smart Ass Trading), the token behind LEEF Trader on WAX. Vite + vanilla TypeScript, mobile-first, no backend.
 
 Live data is fetched in the browser every 60 s from public WAX RPC (greymass → eosusa → pink.gg fallback) and the Alcor API (both send `Access-Control-Allow-Origin: *`):
 `sattoken1111` stat, `smartaadmin1` SAT balance, Alcor pool 12905, `smartatrader` config/splits/plans/buckets, LEEF and WAX prices, and the `swap.alcor` `locks` table (scope `swap.alcor`) for position 153128.
