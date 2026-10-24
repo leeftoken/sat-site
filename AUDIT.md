@@ -3,7 +3,7 @@
 Review of the `sat-site` repository against the WAX and Alcor data the page reads.
 
 - **Date:** 23 Oct 2026, 08:00 Europe/Copenhagen (chain reads at 06:00 UTC)
-- **Repo:** `NostrDanish/sat-site`, branch `main` at `0b4419d`
+- **Repo:** `leeftoken/sat-site`, branch `main` at `0b4419d`
 - **Scope:** `src/main.ts`, `index.html`, `src/style.css`, `vercel.json`, `package.json`, `ci/github-actions-ci.yml`, and the public assets. The `smartatrader`, `sattoken1111`, and `swap.alcor` contracts are not in this tree.
 
 `npm run build` (`tsc --noEmit && vite build`) passed. The production JS bundle is 6.10 kB (2.96 kB gzip). `npm audit` reported 0 vulnerabilities across the 16 installed packages. Runtime dependencies: none.
