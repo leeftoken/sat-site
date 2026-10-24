@@ -22,7 +22,9 @@ Content rules: no keys or secrets, never link t.me/leeftoken (community is t.me/
     npm test        # vitest
     npm run build
 
-The GitHub Actions workflow (runs both) is in `ci/github-actions-ci.yml`: the bot token lacks the `workflow` scope, so move it to `.github/workflows/ci.yml` by hand (GitHub web UI) to switch it on. Refresh pauses in hidden tabs and never overlaps. Security headers (CSP allowing only the WAX/Alcor API hosts) are in `vercel.json`. Share-card URLs assume the site is served at `https://smart-ass-trading.vercel.app`; change them in `index.html` if the domain differs.
+GitHub Actions runs `npm test` and `npm run build` from `.github/workflows/ci.yml`. Refresh pauses in hidden tabs and never overlaps. Security headers (CSP allowing only the WAX/Alcor API hosts) are in `vercel.json`. Share-card URLs assume the site is served at `https://smart-ass-trading.vercel.app`; change them in `index.html` if the domain differs.
+
+Official LEEF site: https://leeftoken.io. Official GitHub: https://github.com/leeftoken (this repo is private: `leeftoken/sat-site`).
 
 ## Audit
-23 Oct 2026 review of this site against the live WAX and Alcor reads: [AUDIT.md](AUDIT.md).
+24 Oct 2026 recheck against the live chain, after the 23 Oct findings were fixed: [AUDIT.md](AUDIT.md).
