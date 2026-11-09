@@ -1,22 +1,29 @@
-import { amt, satPools, bucketLines, dec, esc, feePct, fmt, lpShare, planPrices, quorum, tokenomics, tvl, usd, type BucketRow, type Plan, type Row } from "./lib";
+import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
 const NODES = ["https://wax.greymass.com", "https://api.waxsweden.org", "https://wax.eosphere.io", "https://wax.eosdac.io", "https://api.wax.alohaeos.com"];
+// Hyperion history (same CSP hosts). greymass has no /v2/history; aloha 403s it. Prefer sweden (limit 1000), then eosdac, then eosphere.
+const HISTORY_NODES = ["https://api.waxsweden.org", "https://wax.eosdac.io", "https://wax.eosphere.io"];
 const ALCOR = "https://wax.alcor.exchange/api/v2";
 const POOL = 12905;
 const LOCK_POS = 153128;
 const AIRDROP_BUDGET = 10_000_000; // SAT issued to smartaadmin1 for the airdrop (tx cde3ce9c…)
-const SAT = "sattoken1111";
+const SAT = SAT_CONTRACT;
 const REFRESH_MS = 60_000;
 const TIMEOUT_MS = 6000;
+const HISTORY_TIMEOUT_MS = 15_000;
+const HISTORY_PAGE = 100;
+const HISTORY_MAX = 2000;
 
 let singleSource = false;
 
-async function withTimeout(url: string, init?: RequestInit): Promise<Response> {
+async function withTimeout(url: string, init?: RequestInit, ms = TIMEOUT_MS): Promise<Response> {
   const c = new AbortController();
-  const t = setTimeout(() => c.abort(), TIMEOUT_MS);
+  const t = setTimeout(() => c.abort(), ms);
   try {
-    const r = await fetch(url, { ...init, signal: c.signal });
+    const headers = new Headers(init?.headers);
+    if ((init?.method ?? "GET").toUpperCase() === "POST" && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    const r = await fetch(url, { ...init, headers, signal: c.signal });
     if (!r.ok) throw new Error(`${r.status} ${url}`);
     return r;
   } finally { clearTimeout(t); }
@@ -44,13 +51,13 @@ function bars(id: string, items: [string, number][]) {
   el.querySelectorAll<HTMLElement>(".f").forEach((f) => (f.style.width = `${f.dataset.w}%`));
 }
 
-bars("alloc", [["Locked LP (planned)", 35], ["User rewards, 4 years (planned)", 25], ["Treasury, multisig (planned)", 15], ["Team, vested (planned)", 15], ["LEEF community airdrop (planned)", 10]]);
+bars("alloc", [["Locked LP (planned)", 35], ["User rewards, 4 years (planned)", 25], ["Treasury, multisig (planned)", 15], ["Team, vested (planned)", 15], ["LEEF community airdrop (sent)", 10]]);
 
 const NEWTAB = '<span class="sr-only"> (opens in a new tab)</span>';
 const ACCOUNTS: [string, string][] = [
   ["sattoken1111", "SAT token contract (eosio.token code)"],
   ["smartatrader", "leeftrader contract: plans, splits, caps, LP lock"],
-  ["smartaadmin1", "Admin and SAT issuer, 2-of-3 multisig; holds airdrop SAT"],
+  ["smartaadmin1", "Admin and SAT issuer, 2-of-3 multisig; sent the first SAT airdrop (remainder held here)"],
   ["smartafees11", "Receives LP fees, 2-of-3 multisig; owns position 153128"],
   ["smartabot111", "Bot account with limited permission"],
   ["leefmaincorp", "LEEF token contract"],
@@ -93,17 +100,17 @@ async function load() {
       const otherPools = Math.max(0, inAlcor - locked);
       const sent = Math.max(0, AIRDROP_BUDGET - admin);
       set("supply", fmt(t.issued)); set("max", `of ${fmt(t.max)} max`);
-      set("airdrop", fmt(admin)); set("airdrop-amount", `${fmt(AIRDROP_BUDGET)} SAT budget, issued to smartaadmin1. Sent so far: ${fmt(sent, 4)} SAT; still held: ${fmt(admin)} SAT (live).`);
-      set("airdrop-sent", sent > 0 ? `${fmt(sent, 4)} SAT sent (${fmt((sent / AIRDROP_BUDGET) * 100, 2)}%)` : "Not started");
+      set("airdrop", fmt(admin, 4)); set("airdrop-amount", `${fmt(AIRDROP_BUDGET)} SAT budget. Sent: ${fmt(sent, 4)} SAT; still in smartaadmin1: ${fmt(admin, 4)} SAT (live).`);
+      set("airdrop-sent", sent > 0 ? `${fmt(sent, 4)} SAT sent (${fmt((sent / AIRDROP_BUDGET) * 100, 2)}%)` : "First airdrop recorded as sent 9 Nov 2026");
       set("t-issued", `${fmt(t.issued)} SAT (${fmt(t.issuedPct, 1)}% of max)`);
       set("t-max", `${fmt(t.max)} SAT`);
       set("t-mintable", `${fmt(t.mintable)} SAT not issued yet. smartaadmin1 (the 2-of-3 multisig issuer) can still mint up to the cap.`);
       set("t-pool", lp ? `${fmt(locked)} SAT in locked position ${LOCK_POS} (SAT/LEEF pool ${POOL})` : `Position ${LOCK_POS} not readable right now`);
       set("t-otherpools", `${fmt(otherPools)} SAT in other Alcor positions (not locked)`);
       set("t-locked", `${fmt(t.lockedPctMax, 1)}% of max supply · ${fmt(t.lockedPctIssued, 1)}% of issued supply`);
-      set("t-admin", `${fmt(admin)} SAT in smartaadmin1 for the LEEF community airdrop`);
-      set("t-other", t.other - otherPools > 0 ? `${fmt(t.other - otherPools)} SAT` : "None");
-      bars("issued", [["Locked LP (position " + LOCK_POS + ")", t.lockedPctMax], ["Other Alcor pools", t.max ? (otherPools / t.max) * 100 : 0], ["Airdrop (smartaadmin1)", t.max ? (admin / t.max) * 100 : 0], ["Other holders", t.max ? (Math.max(0, t.other - otherPools) / t.max) * 100 : 0], ["Not issued (mintable)", t.max ? (t.mintable / t.max) * 100 : 0]]);
+      set("t-admin", `${fmt(admin, 4)} SAT remaining in smartaadmin1 after the first airdrop`);
+      set("t-other", t.other - otherPools > 0 ? `${fmt(t.other - otherPools)} SAT (includes airdrop recipients)` : "None");
+      bars("issued", [["Locked LP (position " + LOCK_POS + ")", t.lockedPctMax], ["Other Alcor pools", t.max ? (otherPools / t.max) * 100 : 0], ["Airdrop remainder (smartaadmin1)", t.max ? (admin / t.max) * 100 : 0], ["Other holders (incl. airdrop)", t.max ? (Math.max(0, t.other - otherPools) / t.max) * 100 : 0], ["Not issued (mintable)", t.max ? (t.mintable / t.max) * 100 : 0]]);
     }),
     run("prices", async () => {
       const [l, w] = await Promise.all([alcor<{ usd_price: number; system_price: number }>("/tokens/leef-leefmaincorp"), alcor<{ usd_price: number }>("/tokens/wax-eosio.token")]);
@@ -170,6 +177,100 @@ async function load() {
   status.textContent = errs.length ? `Updated ${t}. Couldn't load: ${errs.join(", ")} — retrying in 60 s.${warn}` : `Live · updated ${t} · refreshes every 60 s.${warn}`;
 }
 
+async function lastIrreversible(): Promise<number> {
+  let lastErr: unknown = new Error("no nodes");
+  for (const n of NODES) {
+    try {
+      const j = await withTimeout(n + "/v1/chain/get_info", { method: "POST", body: "{}" }).then((r) => r.json() as Promise<Row>);
+      const lib = Number(j.last_irreversible_block_num);
+      if (Number.isFinite(lib) && lib > 0) return lib;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+async function historyPage(node: string, skip: number, limit: number): Promise<{ actions: unknown[]; total?: number }> {
+  const u = `${node}/v2/history/get_actions?account=${encodeURIComponent(AIRDROP_FROM)}&filter=${encodeURIComponent(SAT + ":transfer")}&skip=${skip}&limit=${limit}&sort=asc`;
+  const d = await withTimeout(u, undefined, HISTORY_TIMEOUT_MS).then((r) => r.json() as Promise<{ actions?: unknown[]; total?: { value?: number } }>);
+  const actions = Array.isArray(d.actions) ? d.actions : [];
+  const total = Number(d.total?.value);
+  return { actions, total: Number.isFinite(total) ? total : undefined };
+}
+
+async function historyAll(node: string): Promise<unknown[]> {
+  const all: unknown[] = [];
+  let skip = 0;
+  let limit = 1000;
+  try {
+    const first = await historyPage(node, 0, 1000);
+    all.push(...first.actions);
+    if (first.total !== undefined && all.length >= first.total) return all;
+    if (first.total === undefined && first.actions.length > 0 && first.actions.length < 1000) return all;
+    skip = all.length;
+    limit = HISTORY_PAGE;
+  } catch { limit = HISTORY_PAGE; }
+  for (; skip < HISTORY_MAX; skip += limit) {
+    const page = await historyPage(node, skip, limit);
+    all.push(...page.actions);
+    if (page.total !== undefined && all.length >= page.total) break;
+    if (page.actions.length < limit) break;
+  }
+  if (!all.length) throw new Error(`empty history from ${node}`);
+  return all;
+}
+
+let airdropRows: AirdropTransfer[] = [];
+let airdropPage = 1;
+let airdropOk = false;
+let airdropRunning: Promise<void> | null = null;
+
+function renderAirdropPage() {
+  const summary = document.getElementById("airdrop-summary");
+  const body = document.getElementById("airdrop-body");
+  const pageEl = document.getElementById("airdrop-page");
+  const prev = document.getElementById("airdrop-prev") as HTMLButtonElement | null;
+  const next = document.getElementById("airdrop-next") as HTMLButtonElement | null;
+  if (!summary || !body || !airdropOk) return;
+  const s = summarizeAirdrop(airdropRows);
+  summary.textContent = `On-chain: ${fmt(s.total, 4)} SAT to ${fmt(s.recipients)} wallets in ${fmt(s.txs)} irreversible transactions (${fmt(s.transfers)} transfers, deduped).`;
+  const { items, page, pages } = paginateAirdrop(airdropRows, airdropPage, AIRDROP_PAGE_SIZE);
+  airdropPage = page;
+  body.innerHTML = airdropTableHtml(items);
+  if (pageEl) pageEl.textContent = `Page ${page} of ${pages}`;
+  if (prev) prev.disabled = page <= 1;
+  if (next) next.disabled = page >= pages;
+}
+
+document.getElementById("airdrop-prev")?.addEventListener("click", () => { airdropPage--; renderAirdropPage(); });
+document.getElementById("airdrop-next")?.addEventListener("click", () => { airdropPage++; renderAirdropPage(); });
+
+async function loadAirdropHistory() {
+  const lib = await lastIrreversible();
+  let lastErr: unknown = new Error("no history node");
+  let actions: unknown[] | undefined;
+  for (const node of HISTORY_NODES) {
+    try { actions = await historyAll(node); break; }
+    catch (e) { lastErr = e; }
+  }
+  if (!actions) throw lastErr;
+  const rows = sortAirdropTransfers(dedupeAirdropTransfers(parseAirdropTransfers(actions, lib)));
+  if (!rows.length) throw new Error("no matching irreversible SATDROP transfers");
+  airdropRows = rows;
+  airdropOk = true;
+  airdropPage = 1;
+  renderAirdropPage();
+}
+
+function maybeAirdrop() {
+  if (airdropOk || document.hidden) return;
+  if (!airdropRunning) {
+    airdropRunning = loadAirdropHistory().catch(() => {
+      const summary = document.getElementById("airdrop-summary");
+      if (summary && !airdropOk) summary.textContent = "Couldn't load the live distribution list from WAX history right now. The send facts above still stand; retrying…";
+    }).finally(() => { airdropRunning = null; });
+  }
+}
+
 // Single-flight refresh that pauses while the tab is hidden.
 let running: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -177,6 +278,7 @@ function tick() {
   clearTimeout(timer);
   if (document.hidden) return;
   if (!running) running = load().finally(() => { running = null; });
+  maybeAirdrop();
   running.then(() => { clearTimeout(timer); if (!document.hidden) timer = setTimeout(tick, REFRESH_MS); });
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) clearTimeout(timer); else tick(); });
