@@ -4,24 +4,25 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>SAT — Smart Ass Trading</title>
-<meta name="description" content="SAT, the token behind LEEF Trader on WAX: live on-chain stats, tokenomics, plans and the LEEF community airdrop." />
+<meta name="description" content="SAT (Smart Ass Trading) is a WAX token, not Bitcoin satoshis: live on-chain stats, tokenomics, plans and the first LEEF community airdrop." />
+<link rel="canonical" href="https://sat-info.vercel.app/" />
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/png" sizes="32x32" href="/sat-32.png" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <meta property="og:title" content="SAT — Smart Ass Trading" />
-<meta property="og:description" content="SAT, the token behind LEEF Trader on WAX: live on-chain stats, tokenomics and the LEEF community airdrop." />
-<meta property="og:image" content="https://smart-ass-trading.vercel.app/sat-512.png" />
-<meta property="og:url" content="https://smart-ass-trading.vercel.app/" />
+<meta property="og:description" content="SAT (Smart Ass Trading) is a WAX token, not Bitcoin satoshis: live on-chain stats, tokenomics and the first LEEF community airdrop." />
+<meta property="og:image" content="https://sat-info.vercel.app/sat-512.png" />
+<meta property="og:url" content="https://sat-info.vercel.app/" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:image" content="https://smart-ass-trading.vercel.app/sat-512.png" />
+<meta name="twitter:image" content="https://sat-info.vercel.app/sat-512.png" />
 <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
 <main>
   <header>
     <h1 class="brand"><picture><source srcset="/sat-128.webp" type="image/webp" /><img src="/sat-128.png" width="64" height="64" alt="SAT logo" /></picture>SAT — Smart Ass Trading</h1>
-    <p class="lead">SAT is the token behind the LEEF Trader bot, a sub-system of LEEF on WAX. Stats below are read live from WAX and Alcor.</p>
+    <p class="lead">SAT is the WAX token behind the LEEF Trader bot, a sub-system of LEEF on WAX — not Bitcoin satoshis. Stats below are read live from WAX and Alcor.</p>
     <p class="status" id="status" role="status" aria-live="polite">Loading live data…</p>
   </header>
 
@@ -30,13 +31,13 @@
   </nav>
 
   <section id="what"><h2>What SAT is</h2>
-    <p>SAT (Smart Ass Trading) is a WAX token tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and <span data-k="lpshare">–</span> (live from the <code>splits</code> table) goes to deepening SAT and LEEF liquidity on Alcor.</p>
+    <p>SAT (Smart Ass Trading) is a WAX token (<code>SAT@sattoken1111</code>), not Bitcoin satoshis. It is tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and <span data-k="lpshare">–</span> (live from the <code>splits</code> table) goes to deepening SAT and LEEF liquidity on Alcor.</p>
   </section>
 
   <section id="stats"><h2>Live stats</h2>
     <div class="metrics">
       <div class="metric"><span class="v" data-k="supply">–</span><span class="l">SAT issued</span><span class="d" data-k="max">of – max</span></div>
-      <div class="metric"><span class="v" data-k="airdrop">–</span><span class="l">SAT held for the airdrop</span><span class="d" data-k="airdrop-sent">in smartaadmin1</span></div>
+      <div class="metric"><span class="v" data-k="airdrop">–</span><span class="l">SAT left in smartaadmin1</span><span class="d" data-k="airdrop-sent">after the first airdrop</span></div>
       <div class="metric"><span class="v" data-k="price">–</span><span class="l">LEEF per SAT</span><span class="d">Alcor pool 12905</span></div>
     </div>
     <dl class="props">
@@ -77,15 +78,15 @@
     </dl>
     <p class="muted">Share of max supply:</p>
     <div class="bars" id="issued"></div>
-    <h3>Planned allocation (not issued yet)</h3>
-    <p class="note">Planned only. These shares describe how the team intends to use the full 100,000,000 SAT cap. Apart from the locked LP and the airdrop above, none of it has been minted, and the issuer multisig decides when (and whether) it is. There is no public sale and minting can never exceed the cap.</p>
+    <h3>Planned allocation of the 100M cap</h3>
+    <p class="note">20,000,000 SAT is issued today (20% of the 100,000,000 max). The 10% community slice has been minted and the first airdrop was sent on 9 Nov 2026. The bars below are still a plan for the full cap; the remaining 80,000,000 SAT is unissued, and the issuer multisig decides when (and whether) it is minted. There is no public sale and minting can never exceed the cap. These contracts are not audited.</p>
     <div class="bars" id="alloc"></div>
     <table><thead><tr><th>Planned share</th><th>Why</th></tr></thead><tbody>
       <tr><td>35% locked LP (planned)</td><td>Target for locked liquidity over time, so trades move the price less</td></tr>
       <tr><td>25% user rewards (planned)</td><td>Released over 4 years to bot users, not dumped at once</td></tr>
       <tr><td>15% treasury (planned)</td><td>Held by the 2-of-3 multisig for running costs and new pools</td></tr>
       <tr><td>15% team (planned)</td><td>Kept at or under 15% with vesting</td></tr>
-      <tr><td>10% community (planned)</td><td>Ties SAT to existing LEEF holders and founder NFT holders</td></tr>
+      <tr><td>10% community (minted)</td><td>First airdrop sent 9 Nov 2026 to LEEF holders and founder NFT holders</td></tr>
     </tbody></table>
   </section>
 
@@ -102,18 +103,26 @@
   </section>
 
   <section id="airdrop"><h2>LEEF community airdrop</h2>
+    <p class="note">The first SAT airdrop was sent on 9 Nov 2026, 20:11–20:13 CET, from <code>smartaadmin1</code>. 9,999,999.9635 SAT went to 706 wallets in 24 transactions, with 0 failures; all 24 are irreversible. Nothing needs to be claimed. Nobody will ever ask for keys or a payment for this airdrop.</p>
     <dl class="props">
-      <dt>Amount</dt><dd>10,000,000 SAT</dd>
-      <dt>Founder NFTs, 30%</dt><dd>Holders of LEEF Founders Token (collection <code>leeftokennft</code>, template 654718); exact split still being decided</dd>
-      <dt>LEEF holders, 70%</dt><dd>By LEEF in wallet (×1), staked on leefstaker.io (×1.5) and in Alcor LEEF LP (×1.5)</dd>
-      <dt>Minimum</dt><dd>100,000 LEEF</dd>
-      <dt>Cap</dt><dd>5% (500,000 SAT) per account; the excess is shared out to everyone else</dd>
-      <dt>Snapshot</dt><dd>Taken at an unannounced time before sending</dd>
-      <dt>When</dt><dd>Once the Telegram bot is live and the LEEF Trader platform is updated</dd>
-      <dt>Memo</dt><dd><code>SATDROP:&lt;date&gt;:&lt;version&gt;:&lt;list hash&gt; | sat-info.vercel.app | leef-trader.vercel.app</code></dd>
-      <dt>Progress</dt><dd data-k="airdrop-amount">–</dd>
+      <dt>Budget</dt><dd>10,000,000 SAT issued to smartaadmin1; 9,999,999.9635 SAT sent</dd>
+      <dt>Founder NFTs, 30%</dt><dd>Holders of LEEF Founders Token (collection <code>leeftokennft</code>, template 654718): 22 NFTs / 17 holders, ~136,363.6363 SAT per NFT</dd>
+      <dt>LEEF holders, 70%</dt><dd>By LEEF weight: liquid ×1, staked on leefstaker.io ×1.5, Alcor LEEF LP ×1.5</dd>
+      <dt>Minimum</dt><dd>100,000 LEEF weight</dd>
+      <dt>Cap</dt><dd>500,000 SAT per account; excess redistributed</dd>
+      <dt>Snapshot</dt><dd>8 Nov 2026 ~11:00 CET</dd>
+      <dt>Sent</dt><dd>9 Nov 2026, 20:11–20:13 CET, from smartaadmin1 · 24 txs · 0 failures · all irreversible</dd>
+      <dt>Memo</dt><dd><code>SATDROP:20261108:v2:5518f421926a | sat-info.vercel.app | leef-trader.vercel.app</code></dd>
+      <dt>Remainder</dt><dd data-k="airdrop-amount">–</dd>
     </dl>
-    <p class="muted">Nothing needs to be claimed; SAT is sent directly. Nobody will ever ask for keys or a payment for this airdrop.</p>
+    <h3>Distribution (on-chain)</h3>
+    <p class="muted" id="airdrop-summary" role="status" aria-live="polite">Loading irreversible SATDROP transfers from WAX history…</p>
+    <div class="scroll"><table><thead><tr><th>Recipient</th><th class="r">SAT</th><th>Transaction</th></tr></thead><tbody id="airdrop-body"><tr><td colspan="3">–</td></tr></tbody></table></div>
+    <p class="pager">
+      <button type="button" class="page" id="airdrop-prev" disabled>Previous</button>
+      <span id="airdrop-page">–</span>
+      <button type="button" class="page" id="airdrop-next" disabled>Next</button>
+    </p>
   </section>
 
   <section id="accounts"><h2>Accounts and contracts</h2>
@@ -136,7 +145,7 @@
       <a href="https://t.me/leefmaincorp" target="_blank" rel="noopener">LEEF community<span>t.me/leefmaincorp</span><span class="sr-only"> (opens in a new tab)</span></a>
     </div>
   </section>
-  <footer>Data: public WAX RPC (greymass, waxsweden, eosphere, eosdac, aloha; two must agree) and the Alcor API. Refreshes every 60 s.</footer>
+  <footer>Data: public WAX RPC (greymass, waxsweden, eosphere, eosdac, aloha; two must agree) and the Alcor API. Live stats refresh every 60 s. Airdrop distribution is loaded once from Hyperion history on those same hosts.</footer>
 </main>
 <script type="module" src="/src/main.ts"></script>
 </body>

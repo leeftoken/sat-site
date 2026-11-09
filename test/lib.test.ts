@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketLines, canon, dec, feePct, lpShare, planPrices, quorum, tokenomics, tvl, usd } from "../src/lib";
+import { airdropTableHtml, AIRDROP_MEMO_PREFIX, AIRDROP_PAGE_SIZE, bucketLines, canon, dec, dedupeAirdropTransfers, esc, feePct, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, sortAirdropTransfers, summarizeAirdrop, tokenomics, tvl, usd } from "../src/lib";
 
 describe("usd", () => {
   it("never uses scientific notation", () => {
@@ -80,6 +80,99 @@ describe("quorum", () => {
 });
 
 import { satPools } from "../src/lib";
+describe("esc", () => {
+  it("escapes HTML so chain/history strings cannot XSS", () => {
+    expect(esc(`<img src=x onerror="alert(1)">`)).toBe("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(esc("a&b'c")).toBe("a&amp;b&#39;c");
+  });
+});
+
+describe("airdrop history", () => {
+  const memo = `${AIRDROP_MEMO_PREFIX}5518f421926a | sat-info.vercel.app | leef-trader.vercel.app`;
+  const act = (over: Record<string, unknown> = {}, dataOver: Record<string, unknown> = {}) => ({
+    trx_id: "aa".repeat(32),
+    block_num: 465527789,
+    timestamp: "2026-11-09T19:11:44.500",
+    global_sequence: 1,
+    irreversible: true,
+    act: {
+      account: "sattoken1111",
+      name: "transfer",
+      data: { from: "smartaadmin1", to: "alice.wam", quantity: "10.0000 SAT", memo, ...dataOver },
+    },
+    ...over,
+  });
+
+  it("keeps only irreversible SATDROP transfers from smartaadmin1", () => {
+    const rows = parseAirdropTransfers([
+      act(),
+      act({ irreversible: false, global_sequence: 2 }, { to: "skiprev.wam" }),
+      act({ block_num: 500_000_000, global_sequence: 3 }, { to: "afterlib.wam" }),
+      act({ global_sequence: 4 }, { from: "other", to: "notfrom.wam" }),
+      act({ global_sequence: 5 }, { memo: "SAT/LEEF launch LP", to: "smartafees11", quantity: "10000000.0000 SAT" }),
+      act({ global_sequence: 6 }, { to: "bob.wam", quantity: "5.0000 WAX" }),
+      act({ act: { account: "eosio.token", name: "transfer", data: { from: "smartaadmin1", to: "x", quantity: "1 SAT", memo } }, global_sequence: 7 }),
+      act({ global_sequence: 8 }, { to: "carol.wam", quantity: "3.5000 SAT" }),
+    ], 465539000);
+    expect(rows.map((r) => r.to)).toEqual(["alice.wam", "carol.wam"]);
+    expect(summarizeAirdrop(rows)).toEqual({ total: 13.5, recipients: 2, txs: 1, transfers: 2 });
+  });
+
+  it("drops actions when lib is unknown unless marked irreversible", () => {
+    expect(parseAirdropTransfers([act({ irreversible: undefined })])).toEqual([]);
+    const kept = parseAirdropTransfers([act({ irreversible: true })]);
+    expect(kept[0]?.to).toBe("alice.wam");
+  });
+
+  it("dedupes by global sequence and paginates", () => {
+    const a = parseAirdropTransfers([act(), act({ global_sequence: 1 }, { to: "alice.wam" }), act({ global_sequence: 9, trx_id: "bb".repeat(32) }, { to: "z.wam", quantity: "1.0000 SAT" })], 5e8);
+    const d = sortAirdropTransfers(dedupeAirdropTransfers(a));
+    expect(d.map((r) => r.to)).toEqual(["alice.wam", "z.wam"]);
+    expect(paginateAirdrop(d, 1, 1)).toMatchObject({ page: 1, pages: 2, items: [d[0]] });
+    expect(paginateAirdrop(d, 9, 1).page).toBe(2);
+    expect(AIRDROP_PAGE_SIZE).toBe(25);
+  });
+
+  it("sums 4-decimal SAT without float drift", () => {
+    const rows = parseAirdropTransfers([
+      act({ global_sequence: 1 }, { to: "a.wam", quantity: "136363.6363 SAT" }),
+      act({ global_sequence: 2 }, { to: "b.wam", quantity: "11.9189 SAT" }),
+      act({ global_sequence: 3 }, { to: "c.wam", quantity: "9863624.4083 SAT" }),
+    ], 5e8);
+    expect(summarizeAirdrop(rows).total).toBe(9_999_999.9635);
+  });
+
+  it("never emits unescaped HTML for hostile account or tx id", () => {
+    const html = airdropTableHtml([{
+      trxId: `"><img src=x onerror=alert(1)>`,
+      to: `<script>alert(1)</script>`,
+      quantity: 1,
+      memo: `<b>${AIRDROP_MEMO_PREFIX}</b>`,
+      timestamp: "",
+      blockNum: 1,
+      globalSequence: "1",
+    }]);
+    expect(html).not.toMatch(/<script/i);
+    expect(html).not.toMatch(/onerror=/i);
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).not.toContain("href=\"javascript:");
+  });
+
+  it("only links well-formed WAX names and 64-char tx ids", () => {
+    const good = airdropTableHtml([{
+      trxId: "c7dc4b012e668c9826106a7e6f73db6858b9a283aaf16e32bd0ab775f9d8f7b2",
+      to: "af3bi.wam",
+      quantity: 11.9189,
+      memo,
+      timestamp: "",
+      blockNum: 1,
+      globalSequence: "1",
+    }]);
+    expect(good).toContain("https://waxblock.io/account/af3bi.wam");
+    expect(good).toContain("https://waxblock.io/transaction/c7dc4b012e668c9826106a7e6f73db6858b9a283aaf16e32bd0ab775f9d8f7b2");
+  });
+});
+
 describe("satPools", () => {
   it("keeps only SAT@sattoken1111 pools, either side, biggest SAT first", () => {
     const t = (symbol: string, contract: string, quantity: number) => ({ symbol, contract, quantity });
