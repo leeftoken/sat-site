@@ -36,7 +36,7 @@
   <section id="stats"><h2>Live stats</h2>
     <div class="metrics">
       <div class="metric"><span class="v" data-k="supply">–</span><span class="l">SAT issued</span><span class="d" data-k="max">of – max</span></div>
-      <div class="metric"><span class="v" data-k="airdrop">–</span><span class="l">SAT held for the airdrop</span><span class="d">in smartaadmin1</span></div>
+      <div class="metric"><span class="v" data-k="airdrop">–</span><span class="l">SAT held for the airdrop</span><span class="d" data-k="airdrop-sent">in smartaadmin1</span></div>
       <div class="metric"><span class="v" data-k="price">–</span><span class="l">LEEF per SAT</span><span class="d">Alcor pool 12905</span></div>
     </div>
     <dl class="props">
@@ -58,6 +58,11 @@
     </dl>
   </section>
 
+  <section id="satpools"><h2>All SAT pools on Alcor</h2>
+    <p class="muted">Live from Alcor; only pools with SAT@sattoken1111.</p>
+    <div class="scroll"><table><thead><tr><th>Pool</th><th>Pair</th><th class="r">Fee</th><th class="r">SAT</th><th class="r">Other side</th></tr></thead><tbody id="satpools-body"><tr><td colspan="5">–</td></tr></tbody></table></div>
+  </section>
+
   <section id="tokenomics"><h2>Tokenomics</h2>
     <h3>On-chain today (live)</h3>
     <dl class="props">
@@ -65,6 +70,7 @@
       <dt>Issued</dt><dd data-k="t-issued">–</dd>
       <dt>Not issued</dt><dd data-k="t-mintable">–</dd>
       <dt>In locked LP</dt><dd data-k="t-pool">–</dd>
+      <dt>In other Alcor pools</dt><dd data-k="t-otherpools">–</dd>
       <dt>Locked LP share</dt><dd data-k="t-locked">–</dd>
       <dt>Airdrop</dt><dd data-k="t-admin">–</dd>
       <dt>Other holders</dt><dd data-k="t-other">–</dd>
@@ -97,14 +103,15 @@
 
   <section id="airdrop"><h2>LEEF community airdrop</h2>
     <dl class="props">
-      <dt>Amount</dt><dd data-k="airdrop-amount">–</dd>
+      <dt>Amount</dt><dd>10,000,000 SAT</dd>
       <dt>Founder NFTs, 30%</dt><dd>Holders of LEEF Founders Token (collection <code>leeftokennft</code>, template 654718); exact split still being decided</dd>
       <dt>LEEF holders, 70%</dt><dd>By LEEF in wallet (×1), staked on leefstaker.io (×1.5) and in Alcor LEEF LP (×1.5)</dd>
       <dt>Minimum</dt><dd>100,000 LEEF</dd>
       <dt>Cap</dt><dd>5% (500,000 SAT) per account; the excess is shared out to everyone else</dd>
       <dt>Snapshot</dt><dd>Taken at an unannounced time before sending</dd>
       <dt>When</dt><dd>Once the Telegram bot is live and the LEEF Trader platform is updated</dd>
-      <dt>Memo</dt><dd><code>SAT LEEF community airdrop - leef-trader.vercel.app &amp; t.me/LEEF_Trader_Bot</code></dd>
+      <dt>Memo</dt><dd><code>SATDROP:&lt;date&gt;:&lt;version&gt;:&lt;list hash&gt; | sat-info.vercel.app | leef-trader.vercel.app</code></dd>
+      <dt>Progress</dt><dd data-k="airdrop-amount">–</dd>
     </dl>
     <p class="muted">Nothing needs to be claimed; SAT is sent directly. Nobody will ever ask for keys or a payment for this airdrop.</p>
   </section>
@@ -129,7 +136,7 @@
       <a href="https://t.me/leefmaincorp" target="_blank" rel="noopener">LEEF community<span>t.me/leefmaincorp</span><span class="sr-only"> (opens in a new tab)</span></a>
     </div>
   </section>
-  <footer>Data: public WAX RPC (greymass, eosusa, aloha, eosphere; two must agree) and the Alcor API. Refreshes every 60 s.</footer>
+  <footer>Data: public WAX RPC (greymass, waxsweden, eosphere, eosdac, aloha; two must agree) and the Alcor API. Refreshes every 60 s.</footer>
 </main>
 <script type="module" src="/src/main.ts"></script>
 </body>
