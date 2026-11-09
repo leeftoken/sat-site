@@ -92,3 +92,23 @@ describe("satPools", () => {
     expect(r[0]).toMatchObject({ pair: "SAT/USDC", sat: 50, other: 1, otherSym: "USDC" });
   });
 });
+
+import { ownShare } from "../src/lib";
+describe("satPools metrics", () => {
+  const t = (symbol: string, contract: string, quantity: number) => ({ symbol, contract, quantity });
+  it("flags near-empty pools and prices SAT in the other token", () => {
+    const r = satPools([
+      { id: 13238, fee: 3000, liquidity: "5", priceA: 2.9e9, priceB: 3.4e-10, tokenA: t("WAXWBTC", "eth.token", 2e-8), tokenB: t("SAT", "sattoken1111", 0.0001) },
+      { id: 13235, fee: 10000, liquidity: "9", priceA: 145.3, priceB: 0.00688, volumeB24: 54311, tokenA: t("WAX", "eosio.token", 5769), tokenB: t("SAT", "sattoken1111", 837856) },
+    ], "sattoken1111", 2.6e-5, (id) => (id === "WAX@eosio.token" ? 0.0038 : 0));
+    expect(r[0]).toMatchObject({ id: 13235, nearEmpty: false, otherPerSat: 0.00688, satVol24: 54311 });
+    expect(r[0].satFees24).toBeCloseTo(543.11, 1);
+    expect(r[0].tvlUsd).toBeCloseTo(837856 * 2.6e-5 + 5769 * 0.0038, 3);
+    expect(r[1]).toMatchObject({ id: 13238, nearEmpty: true });
+  });
+  it("ownShare counts only our in-range liquidity", () => {
+    const pos = [{ owner: "danishcrypto", tickLower: -10, tickUpper: 10, liquidity: "60" }, { owner: "danishcrypto", tickLower: 20, tickUpper: 30, liquidity: "500" }, { owner: "someone", tickLower: -10, tickUpper: 10, liquidity: "40" }];
+    expect(ownShare(pos, 0, "100", new Set(["danishcrypto"]))).toBeCloseTo(0.6);
+    expect(ownShare(pos, 0, "0", new Set(["danishcrypto"]))).toBe(0);
+  });
+});

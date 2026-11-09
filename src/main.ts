@@ -1,4 +1,4 @@
-import { amt, satPools, bucketLines, dec, esc, feePct, fmt, lpShare, planPrices, quorum, tokenomics, tvl, usd, type BucketRow, type Plan, type Row } from "./lib";
+import { amt, satPools, ownShare, type AlcorPool, type Position, bucketLines, dec, esc, feePct, fmt, lpShare, planPrices, quorum, tokenomics, tvl, usd, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
 const NODES = ["https://wax.greymass.com", "https://api.waxsweden.org", "https://wax.eosphere.io", "https://wax.eosdac.io", "https://api.wax.alohaeos.com"];
@@ -7,6 +7,8 @@ const POOL = 12905;
 const LOCK_POS = 153128;
 const AIRDROP_BUDGET = 10_000_000; // SAT issued to smartaadmin1 for the airdrop (tx cde3ce9c…)
 const SAT = "sattoken1111";
+// Our wallets + SAT system accounts, for the "Ours" column.
+const OURS = new Set(["danishcrypto", "mywaxgallery", "dustwizard42", "qu.ui.wam", "skgaw.wam", "niftywarlord", "smart.ass", "smartafees11", "smartatrader", "smartaadmin1"]);
 const REFRESH_MS = 60_000;
 const TIMEOUT_MS = 6000;
 
@@ -159,9 +161,27 @@ async function load() {
   });
 
   await run("sat pools", async () => {
-    const all = await alcor<{ id: number; fee: number; tokenA: Tok & { contract: string }; tokenB: Tok & { contract: string } }[]>("/swap/pools");
-    const list = satPools(all, SAT);
-    document.getElementById("satpools-body")!.innerHTML = list.map((p) => `<tr><td><a href="https://wax.alcor.exchange/swap?pool=${p.id}" target="_blank" rel="noopener">${p.id}${NEWTAB}</a></td><td>${esc(p.pair)}</td><td class="r">${feePct(p.fee)}%</td><td class="r">${fmt(p.sat)}</td><td class="r">${fmt(p.other, 6)} ${esc(p.otherSym)}</td></tr>`).join("") || `<tr><td colspan="5">None found</td></tr>`;
+    // Discovered live from Alcor's full pool list every refresh: any new pool with SAT@sattoken1111 shows up automatically.
+    const [all, toks] = await Promise.all([alcor<AlcorPool[]>("/swap/pools"), alcor<{ symbol: string; contract: string; usd_price: number }[]>("/tokens").catch(() => [])]);
+    const usdMap = new Map(toks.map((t) => [`${t.symbol}@${t.contract}`, Number(t.usd_price) || 0]));
+    const ref = all.find((p) => Number(p.id) === POOL);
+    const satUsd = ref && leefUsd ? Number(ref.priceB) * leefUsd : 0; // LEEF per SAT x LEEF USD
+    const list = satPools(all, SAT, satUsd, (id) => usdMap.get(id) ?? 0);
+    const share = new Map<number, number>();
+    await Promise.all(list.map(async (p) => {
+      const raw = all.find((x) => Number(x.id) === p.id)!;
+      try {
+        const pos = (await rows("swap.alcor", "positions", String(p.id), { limit: 1000 })) as unknown as Position[];
+        share.set(p.id, ownShare(pos, Number(raw.tick), String(raw.liquidity ?? 0), OURS));
+      } catch { /* leave blank */ }
+    }));
+    const tot = list.reduce((s, p) => s + (p.nearEmpty ? 0 : p.sat), 0);
+    set("satpools-summary", `${list.length} pools found (${list.filter((p) => p.nearEmpty).length} near-empty) · ${fmt(tot)} SAT in active pools`);
+    document.getElementById("satpools-body")!.innerHTML = list.map((p) => {
+      const sh = share.get(p.id);
+      const flag = p.nearEmpty ? ' <span class="poolwarn">near-empty: price not meaningful, do not trade</span>' : "";
+      return `<tr${p.nearEmpty ? ' class="dim"' : ""}><td><a href="https://wax.alcor.exchange/swap?pool=${p.id}" target="_blank" rel="noopener">${p.id}${NEWTAB}</a></td><td>${esc(p.pair)}${flag}</td><td class="r">${feePct(p.fee)}%</td><td class="r">${fmt(p.sat)}</td><td class="r">${fmt(p.other, 6)} ${esc(p.otherSym)}</td><td class="r">${p.nearEmpty ? "–" : dec(p.otherPerSat) + " " + esc(p.otherSym)}</td><td class="r">${p.tvlUsd ? (p.tvlEstimated ? "≈" : "") + usd(p.tvlUsd) : "–"}</td><td class="r">${fmt(p.satVol24)} SAT</td><td class="r">${fmt(p.satFees24, 2)} SAT</td><td class="r">${sh === undefined ? "–" : fmt(sh * 100, 1) + "%"}</td></tr>`;
+    }).join("") || `<tr><td colspan="10">None found</td></tr>`;
   });
 
   const t = new Date().toLocaleTimeString();

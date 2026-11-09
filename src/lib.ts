@@ -118,15 +118,48 @@ export function lpShare(splits: { bucket: string; bps: number }[]): number {
 }
 
 export interface PoolTok { quantity: number; symbol: string; contract: string }
-export interface SatPoolRow { id: number; pair: string; fee: number; sat: number; other: number; otherSym: string }
-/** Every Alcor pool that has SAT (by contract, not ticker) on either side, biggest SAT reserve first. */
-export function satPools(pools: { id: number; fee: number; tokenA: PoolTok; tokenB: PoolTok }[], satContract: string): SatPoolRow[] {
+export interface AlcorPool {
+  id: number; fee: number; active?: boolean; tick?: number; liquidity?: string; priceA?: number; priceB?: number; tvlUSD?: number;
+  volumeA24?: number; volumeB24?: number; volumeUSD24?: number; tokenA: PoolTok; tokenB: PoolTok;
+}
+export interface SatPoolRow {
+  id: number; pair: string; fee: number; sat: number; other: number; otherSym: string; otherId: string;
+  otherPerSat: number; satVol24: number; satFees24: number; tvlUsd: number; tvlEstimated: boolean; nearEmpty: boolean;
+}
+/** Below this, a pool is flagged near-empty: its price is meaningless and nobody should trade into it. */
+export const NEAR_EMPTY_SAT = 10;
+export const NEAR_EMPTY_USD = 1;
+/**
+ * Every Alcor pool with SAT (matched by contract, never by ticker) on either side, discovered from the live pool list,
+ * biggest SAT reserve first. usdOf(id) returns a USD price for "SYMBOL@contract" (0 if unknown); satUsd prices SAT.
+ */
+export function satPools(pools: AlcorPool[], satContract: string, satUsd = 0, usdOf: (id: string) => number = () => 0): SatPoolRow[] {
   return pools
-    .filter((p) => p.tokenA.contract === satContract || p.tokenB.contract === satContract)
+    .filter((p) => p.active !== false && (p.tokenA.contract === satContract || p.tokenB.contract === satContract))
     .map((p) => {
       const satIsA = p.tokenA.contract === satContract;
       const s = satIsA ? p.tokenA : p.tokenB, o = satIsA ? p.tokenB : p.tokenA;
-      return { id: Number(p.id), pair: `SAT/${o.symbol}`, fee: p.fee, sat: Number(s.quantity), other: Number(o.quantity), otherSym: o.symbol };
+      const sat = Number(s.quantity), other = Number(o.quantity), otherId = `${o.symbol}@${o.contract}`;
+      // Alcor: priceA = B per 1 A, priceB = A per 1 B.
+      const otherPerSat = Number(satIsA ? p.priceA : p.priceB) || 0;
+      const satVol24 = Number(satIsA ? p.volumeA24 : p.volumeB24) || 0;
+      const est = sat * satUsd + other * usdOf(otherId);
+      const alcorTvl = Number(p.tvlUSD) || 0;
+      const tvlUsd = alcorTvl > 0 && alcorTvl >= est * 0.5 ? alcorTvl : est;
+      return {
+        id: Number(p.id), pair: `SAT/${o.symbol}`, fee: p.fee, sat, other, otherSym: o.symbol, otherId, otherPerSat, satVol24,
+        satFees24: satVol24 * (p.fee / 1e6), tvlUsd, tvlEstimated: tvlUsd !== alcorTvl,
+        nearEmpty: sat < NEAR_EMPTY_SAT || (tvlUsd > 0 && tvlUsd < NEAR_EMPTY_USD) || !(Number(p.liquidity ?? 1) > 0),
+      };
     })
     .sort((a, b) => b.sat - a.sat);
+}
+
+export interface Position { owner: string; tickLower: number; tickUpper: number; liquidity: string }
+/** Share (0..1) of a pool's active liquidity held by `ours` in in-range positions. */
+export function ownShare(positions: Position[], tick: number, poolLiquidity: string | number, ours: Set<string>): number {
+  const L = Number(poolLiquidity); if (!(L > 0)) return 0;
+  let own = 0;
+  for (const x of positions) if (ours.has(x.owner) && x.tickLower <= tick && tick < x.tickUpper) own += Number(x.liquidity);
+  return Math.min(1, own / L);
 }
