@@ -26,7 +26,7 @@ Content rules: no keys or secrets, never link t.me/leeftoken (community is https
 
 GitHub Actions runs `npm test` and `npm run build` from `.github/workflows/ci.yml`. Refresh pauses in hidden tabs and never overlaps. Security headers (CSP allowing only the WAX/Alcor API hosts) are in `vercel.json`.
 
-Official LEEF site: https://leeftoken.io. Official GitHub: https://github.com/leeftoken (this repo is private: `leeftoken/sat-site`).
+Official LEEF site: https://leeftoken.io. Official GitHub: https://github.com/leeftoken (`leeftoken/sat-site`).
 
 ## Audit
 9 Nov 2026 recheck (first SAT airdrop sent; copy and share URLs): [AUDIT.md](AUDIT.md).

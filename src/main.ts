@@ -221,8 +221,15 @@ async function historyAll(node: string): Promise<unknown[]> {
 
 let airdropRows: AirdropTransfer[] = [];
 let airdropPage = 1;
+let airdropQuery = "";
 let airdropOk = false;
 let airdropRunning: Promise<void> | null = null;
+
+function airdropVisible(): AirdropTransfer[] {
+  const q = airdropQuery.trim().toLowerCase();
+  if (!q) return airdropRows;
+  return airdropRows.filter((r) => r.to.toLowerCase().includes(q));
+}
 
 function renderAirdropPage() {
   const summary = document.getElementById("airdrop-summary");
@@ -232,8 +239,12 @@ function renderAirdropPage() {
   const next = document.getElementById("airdrop-next") as HTMLButtonElement | null;
   if (!summary || !body || !airdropOk) return;
   const s = summarizeAirdrop(airdropRows);
-  summary.textContent = `On-chain: ${fmt(s.total, 4)} SAT to ${fmt(s.recipients)} wallets in ${fmt(s.txs)} irreversible transactions (${fmt(s.transfers)} transfers, deduped).`;
-  const { items, page, pages } = paginateAirdrop(airdropRows, airdropPage, AIRDROP_PAGE_SIZE);
+  const shown = airdropVisible();
+  const q = airdropQuery.trim();
+  summary.textContent = q
+    ? `On-chain: ${fmt(s.total, 4)} SAT to ${fmt(s.recipients)} wallets in ${fmt(s.txs)} irreversible transactions (${fmt(s.transfers)} transfers, deduped). ${fmt(shown.length)} match “${q}”.`
+    : `On-chain: ${fmt(s.total, 4)} SAT to ${fmt(s.recipients)} wallets in ${fmt(s.txs)} irreversible transactions (${fmt(s.transfers)} transfers, deduped).`;
+  const { items, page, pages } = paginateAirdrop(shown, airdropPage, AIRDROP_PAGE_SIZE);
   airdropPage = page;
   body.innerHTML = airdropTableHtml(items);
   if (pageEl) pageEl.textContent = `Page ${page} of ${pages}`;
@@ -243,6 +254,11 @@ function renderAirdropPage() {
 
 document.getElementById("airdrop-prev")?.addEventListener("click", () => { airdropPage--; renderAirdropPage(); });
 document.getElementById("airdrop-next")?.addEventListener("click", () => { airdropPage++; renderAirdropPage(); });
+document.getElementById("airdrop-find")?.addEventListener("input", (event) => {
+  airdropQuery = (event.target as HTMLInputElement).value;
+  airdropPage = 1;
+  renderAirdropPage();
+});
 
 async function loadAirdropHistory() {
   const lib = await lastIrreversible();

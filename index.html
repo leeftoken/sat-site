@@ -20,15 +20,21 @@
 </head>
 <body>
 <main>
-  <header>
-    <h1 class="brand"><picture><source srcset="/sat-128.webp" type="image/webp" /><img src="/sat-128.png" width="64" height="64" alt="SAT logo" /></picture>SAT — Smart Ass Trading</h1>
-    <p class="lead">SAT is the WAX token behind the LEEF Trader bot, a sub-system of LEEF on WAX — not Bitcoin satoshis. Stats below are read live from WAX and Alcor.</p>
+  <header class="hero">
+    <div class="brand">
+      <picture><source srcset="/sat-128.webp" type="image/webp" /><img src="/sat-128.png" width="64" height="64" alt="SAT logo" /></picture>
+      <div>
+        <p class="kicker">LEEF Trader × WAX</p>
+        <h1>SAT</h1>
+        <p class="tag">Smart Ass Trading</p>
+      </div>
+    </div>
+    <p class="lead">SAT is the WAX token behind the LEEF Trader bot, a sub-system of LEEF on WAX — not Bitcoin satoshis. Stats below are read live from WAX and Alcor. Nothing on this page is typed in by hand.</p>
     <p class="status" id="status" role="status" aria-live="polite">Loading live data…</p>
+    <nav class="toc" aria-label="Sections">
+      <a href="#what">What SAT is</a><a href="#stats">Live</a><a href="#pool">Pool</a><a href="#tokenomics">Supply</a><a href="#split">Split</a><a href="#plans">Plans</a><a href="#airdrop">Distribution</a><a href="#accounts">Contracts</a><a href="#safety">Safety</a><a href="#links">Links</a>
+    </nav>
   </header>
-
-  <nav class="toc">
-    <a href="#what">What SAT is</a><a href="#stats">Live stats</a><a href="#pool">SAT/LEEF pool</a><a href="#tokenomics">Tokenomics</a><a href="#split">Revenue split</a><a href="#plans">Plans</a><a href="#airdrop">Airdrop</a><a href="#accounts">Accounts</a><a href="#safety">Safety</a><a href="#links">Links</a>
-  </nav>
 
   <section id="what"><h2>What SAT is</h2>
     <p>SAT (Smart Ass Trading) is a WAX token (<code>SAT@sattoken1111</code>), not Bitcoin satoshis. It is tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and <span data-k="lpshare">–</span> (live from the <code>splits</code> table) goes to deepening SAT and LEEF liquidity on Alcor.</p>
@@ -117,6 +123,9 @@
     </dl>
     <h3>Distribution (on-chain)</h3>
     <p class="muted" id="airdrop-summary" role="status" aria-live="polite">Loading irreversible SATDROP transfers from WAX history…</p>
+    <label class="find">Find a wallet
+      <input id="airdrop-find" type="search" inputmode="text" autocomplete="off" spellcheck="false" placeholder="account name" />
+    </label>
     <div class="scroll"><table><thead><tr><th>Recipient</th><th class="r">SAT</th><th>Transaction</th></tr></thead><tbody id="airdrop-body"><tr><td colspan="3">–</td></tr></tbody></table></div>
     <p class="pager">
       <button type="button" class="page" id="airdrop-prev" disabled>Previous</button>
