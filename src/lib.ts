@@ -116,3 +116,17 @@ export function tokenomics(issued: number, max: number, inPool: number, airdrop:
 export function lpShare(splits: { bucket: string; bps: number }[]): number {
   return splits.filter((s) => s.bucket === "satlp" || s.bucket === "leeflp").reduce((a, s) => a + s.bps, 0) / 100;
 }
+
+export interface PoolTok { quantity: number; symbol: string; contract: string }
+export interface SatPoolRow { id: number; pair: string; fee: number; sat: number; other: number; otherSym: string }
+/** Every Alcor pool that has SAT (by contract, not ticker) on either side, biggest SAT reserve first. */
+export function satPools(pools: { id: number; fee: number; tokenA: PoolTok; tokenB: PoolTok }[], satContract: string): SatPoolRow[] {
+  return pools
+    .filter((p) => p.tokenA.contract === satContract || p.tokenB.contract === satContract)
+    .map((p) => {
+      const satIsA = p.tokenA.contract === satContract;
+      const s = satIsA ? p.tokenA : p.tokenB, o = satIsA ? p.tokenB : p.tokenA;
+      return { id: Number(p.id), pair: `SAT/${o.symbol}`, fee: p.fee, sat: Number(s.quantity), other: Number(o.quantity), otherSym: o.symbol };
+    })
+    .sort((a, b) => b.sat - a.sat);
+}

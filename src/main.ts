@@ -1,10 +1,12 @@
-import { amt, bucketLines, dec, esc, feePct, fmt, lpShare, planPrices, quorum, tokenomics, tvl, usd, type BucketRow, type Plan, type Row } from "./lib";
+import { amt, satPools, bucketLines, dec, esc, feePct, fmt, lpShare, planPrices, quorum, tokenomics, tvl, usd, type BucketRow, type Plan, type Row } from "./lib";
 
-// wax.pink.gg dropped (timed out in the audit); aloha + eosphere added as tie-breakers.
-const NODES = ["https://wax.greymass.com", "https://wax.eosusa.io", "https://api.wax.alohaeos.com", "https://wax.eosphere.io"];
+// wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
+const NODES = ["https://wax.greymass.com", "https://api.waxsweden.org", "https://wax.eosphere.io", "https://wax.eosdac.io", "https://api.wax.alohaeos.com"];
 const ALCOR = "https://wax.alcor.exchange/api/v2";
 const POOL = 12905;
 const LOCK_POS = 153128;
+const AIRDROP_BUDGET = 10_000_000; // SAT issued to smartaadmin1 for the airdrop (tx cde3ce9c…)
+const SAT = "sattoken1111";
 const REFRESH_MS = 60_000;
 const TIMEOUT_MS = 6000;
 
@@ -68,7 +70,7 @@ const LABEL: Record<string, string> = { satlp: "SAT LP", ops: "Ops (CPU, RAM, ho
 const label = (b: string) => LABEL[b] ?? b;
 
 interface Tok { quantity: number; symbol: string }
-interface Pool { priceB: number; fee: number; tokenA: Tok; tokenB: Tok; tvlUSD: number; volumeUSD24: number; volumeUSDWeek: number }
+interface Pool { priceB: number; fee: number; tokenA: Tok; tokenB: Tok; tvlUSD: number; volumeUSD24: number; volumeUSDWeek: number; volumeA24?: number; volumeAWeek?: number }
 
 async function load() {
   const status = document.getElementById("status")!;
@@ -80,21 +82,28 @@ async function load() {
 
   await Promise.all([
     run("token stats", async () => {
-      const [s, admin, pool] = await Promise.all([
-        rpc<Record<string, { supply: string; max_supply: string }>>("/v1/chain/get_currency_stats", { code: "sattoken1111", symbol: "SAT" }),
+      const [s, admin, inAlcor, pos] = await Promise.all([
+        rpc<Record<string, { supply: string; max_supply: string }>>("/v1/chain/get_currency_stats", { code: SAT, symbol: "SAT" }),
         bal("smartaadmin1"), bal("swap.alcor"),
+        alcor<{ id: number; amountB: string; isLocked: boolean }[]>("/account/smartafees11/positions").catch(() => []),
       ]);
-      const t = tokenomics(amt(s.SAT.supply), amt(s.SAT.max_supply), pool, admin);
+      const lp = pos.find((p) => Number(p.id) === LOCK_POS);
+      const locked = lp && lp.isLocked ? amt(lp.amountB) : 0;
+      const t = tokenomics(amt(s.SAT.supply), amt(s.SAT.max_supply), locked, admin);
+      const otherPools = Math.max(0, inAlcor - locked);
+      const sent = Math.max(0, AIRDROP_BUDGET - admin);
       set("supply", fmt(t.issued)); set("max", `of ${fmt(t.max)} max`);
-      set("airdrop", fmt(admin)); set("airdrop-amount", `${fmt(admin)} SAT, issued and held in smartaadmin1`);
+      set("airdrop", fmt(admin)); set("airdrop-amount", `${fmt(AIRDROP_BUDGET)} SAT budget, issued to smartaadmin1. Sent so far: ${fmt(sent, 4)} SAT; still held: ${fmt(admin)} SAT (live).`);
+      set("airdrop-sent", sent > 0 ? `${fmt(sent, 4)} SAT sent (${fmt((sent / AIRDROP_BUDGET) * 100, 2)}%)` : "Not started");
       set("t-issued", `${fmt(t.issued)} SAT (${fmt(t.issuedPct, 1)}% of max)`);
       set("t-max", `${fmt(t.max)} SAT`);
       set("t-mintable", `${fmt(t.mintable)} SAT not issued yet. smartaadmin1 (the 2-of-3 multisig issuer) can still mint up to the cap.`);
-      set("t-pool", `${fmt(pool)} SAT in Alcor (SAT/LEEF pool ${POOL}, locked position ${LOCK_POS})`);
+      set("t-pool", lp ? `${fmt(locked)} SAT in locked position ${LOCK_POS} (SAT/LEEF pool ${POOL})` : `Position ${LOCK_POS} not readable right now`);
+      set("t-otherpools", `${fmt(otherPools)} SAT in other Alcor positions (not locked)`);
       set("t-locked", `${fmt(t.lockedPctMax, 1)}% of max supply · ${fmt(t.lockedPctIssued, 1)}% of issued supply`);
       set("t-admin", `${fmt(admin)} SAT in smartaadmin1 for the LEEF community airdrop`);
-      set("t-other", t.other > 0 ? `${fmt(t.other)} SAT` : "None");
-      bars("issued", [["Locked LP (pool " + POOL + ")", t.lockedPctMax], ["Airdrop (smartaadmin1)", t.max ? (admin / t.max) * 100 : 0], ["Other holders", t.max ? (t.other / t.max) * 100 : 0], ["Not issued (mintable)", t.max ? (t.mintable / t.max) * 100 : 0]]);
+      set("t-other", t.other - otherPools > 0 ? `${fmt(t.other - otherPools)} SAT` : "None");
+      bars("issued", [["Locked LP (position " + LOCK_POS + ")", t.lockedPctMax], ["Other Alcor pools", t.max ? (otherPools / t.max) * 100 : 0], ["Airdrop (smartaadmin1)", t.max ? (admin / t.max) * 100 : 0], ["Other holders", t.max ? (Math.max(0, t.other - otherPools) / t.max) * 100 : 0], ["Not issued (mintable)", t.max ? (t.mintable / t.max) * 100 : 0]]);
     }),
     run("prices", async () => {
       const [l, w] = await Promise.all([alcor<{ usd_price: number; system_price: number }>("/tokens/leef-leefmaincorp"), alcor<{ usd_price: number }>("/tokens/wax-eosio.token")]);
@@ -144,8 +153,15 @@ async function load() {
     set("reserves", `${fmt(p.tokenA.quantity)} ${p.tokenA.symbol} + ${fmt(p.tokenB.quantity, 2)} ${p.tokenB.symbol}`);
     const v = tvl(p.tvlUSD, p.tokenA.quantity, leefUsd);
     set("tvl", !v.estimate ? usd(v.usd) : v.usd ? `About ${usd(v.usd)} (estimate from the LEEF price; Alcor shows no USD TVL yet)` : "Not available");
-    set("volume", `24h ${usd(p.volumeUSD24)} · 7d ${usd(p.volumeUSDWeek)}`);
+    // Alcor has no trusted SAT USD price yet, so its USD volume undercounts; show the LEEF side too.
+    set("volume", `24h ${fmt(p.volumeA24 ?? 0)} LEEF · 7d ${fmt(p.volumeAWeek ?? 0)} LEEF (Alcor USD figure: 24h ${usd(p.volumeUSD24)}, 7d ${usd(p.volumeUSDWeek)})`);
     set("satusd", leefUsd ? `${usd(p.priceB * leefUsd)} (from LEEF price × pool price)` : "–");
+  });
+
+  await run("sat pools", async () => {
+    const all = await alcor<{ id: number; fee: number; tokenA: Tok & { contract: string }; tokenB: Tok & { contract: string } }[]>("/swap/pools");
+    const list = satPools(all, SAT);
+    document.getElementById("satpools-body")!.innerHTML = list.map((p) => `<tr><td><a href="https://wax.alcor.exchange/swap?pool=${p.id}" target="_blank" rel="noopener">${p.id}${NEWTAB}</a></td><td>${esc(p.pair)}</td><td class="r">${feePct(p.fee)}%</td><td class="r">${fmt(p.sat)}</td><td class="r">${fmt(p.other, 6)} ${esc(p.otherSym)}</td></tr>`).join("") || `<tr><td colspan="5">None found</td></tr>`;
   });
 
   const t = new Date().toLocaleTimeString();

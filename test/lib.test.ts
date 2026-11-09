@@ -78,3 +78,17 @@ describe("quorum", () => {
   });
   it("canon ignores key order", () => expect(canon({ b: 1, a: [1, { d: 2, c: 3 }] })).toBe(canon({ a: [1, { c: 3, d: 2 }], b: 1 })));
 });
+
+import { satPools } from "../src/lib";
+describe("satPools", () => {
+  it("keeps only SAT@sattoken1111 pools, either side, biggest SAT first", () => {
+    const t = (symbol: string, contract: string, quantity: number) => ({ symbol, contract, quantity });
+    const r = satPools([
+      { id: 1, fee: 3000, tokenA: t("LEEF", "leefmaincorp", 10), tokenB: t("SAT", "sattoken1111", 5) },
+      { id: 2, fee: 10000, tokenA: t("SAT", "sattoken1111", 50), tokenB: t("USDC", "wrap.alcor", 1) },
+      { id: 3, fee: 3000, tokenA: t("SAT", "fake.token", 999), tokenB: t("WAX", "eosio.token", 1) },
+    ], "sattoken1111");
+    expect(r.map((p) => p.id)).toEqual([2, 1]);
+    expect(r[0]).toMatchObject({ pair: "SAT/USDC", sat: 50, other: 1, otherSym: "USDC" });
+  });
+});
