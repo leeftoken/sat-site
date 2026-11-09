@@ -240,3 +240,96 @@ export function airdropTableHtml(rows: AirdropTransfer[]): string {
     return `<tr><td>${toCell}</td><td class="r">${esc(fmt(r.quantity, 4))}</td><td>${txCell}</td></tr>`;
   }).join("");
 }
+
+/** Intended stake account. Not created. Production wasm must match before any UI treats it as live. */
+export const STAKE_ACCOUNT = "smartastake1";
+export const STAKE_AIRDROP_ACCOUNT = "smartadrop11";
+export const STAKE_CODE_SHA256 = "7aaf7c0010df315874924ca0dcf7b6995a1b20eed7aad8077ff27f56e4c5c6b4";
+export const STAKE_SCALE = 10n ** 18n;
+const STAKE_HASH = /^[0-9a-f]{64}$/;
+
+export type StakeMemo = "stake" | "reward" | "reject";
+
+/** stake / empty memo stakes. reward always funds the pot. Any other memo is a reward only from an allowlisted funder. */
+export function classifyStakeMemo(memo: string, fromIsFunder: boolean): StakeMemo {
+  if (memo === "stake" || memo === "") return "stake";
+  if (memo === "reward" || fromIsFunder) return "reward";
+  return "reject";
+}
+
+/** Accumulator increase. Zero stake holds the transfer instead of dividing by zero. Truncates toward zero. */
+export function accIncrease(incoming: bigint, totalStaked: bigint): bigint {
+  if (incoming < 0n || totalStaked < 0n) throw new Error("negative");
+  if (totalStaked === 0n || incoming === 0n) return 0n;
+  return (incoming * STAKE_SCALE) / totalStaked;
+}
+
+/** Lazy pending reward for one staker. Dust stays in the pot because this truncates. */
+export function pendingReward(amount: bigint, acc: bigint, paid: bigint): bigint {
+  if (amount <= 0n || acc <= paid) return 0n;
+  return (amount * (acc - paid)) / STAKE_SCALE;
+}
+
+export function quorumReached(forVotes: bigint, againstVotes: bigint, snapshot: bigint, quorumBps: number): boolean {
+  if (snapshot < 0n || quorumBps < 0) return false;
+  const cast = forVotes + againstVotes;
+  return cast * 10000n >= snapshot * BigInt(quorumBps);
+}
+
+export function approvalReached(forVotes: bigint, againstVotes: bigint, approvalBps: number): boolean {
+  const cast = forVotes + againstVotes;
+  return cast > 0n && forVotes * 10000n >= cast * BigInt(approvalBps);
+}
+
+/** At most `capBps` of the fund's staked balance (2500 = 25%). */
+export function airdropWithinCap(amount: bigint, fundStaked: bigint, capBps = 2500): boolean {
+  return amount > 0n && fundStaked > 0n && amount * 10000n <= fundStaked * BigInt(capBps);
+}
+
+export function splitError(bps: readonly number[]): string | null {
+  if (bps.length !== 5 || bps.some((b) => !Number.isInteger(b))) return "split len";
+  if (bps.some((b) => b < 0 || b > 5000)) return "split each";
+  if (bps.reduce((a, b) => a + b, 0) !== 10000) return "split sum";
+  const [satlp, , ops, rewards] = bps;
+  if (satlp < 1000) return "satlp min";
+  if (ops > 4000) return "ops max";
+  if (rewards < 500) return "rewards min";
+  return null;
+}
+
+export function limitsError(maxIn: number, daily: number): string | null {
+  if (!Number.isInteger(maxIn) || maxIn < 50 || maxIn > 500) return "max_in bounds";
+  if (!Number.isInteger(daily) || daily < 100 || daily > 2000) return "daily bounds";
+  if (maxIn > daily) return "max_in>daily";
+  return null;
+}
+
+export const STAKE_BOUNDS: readonly [string, string, string][] = [
+  ["setsplit", "satlp, leeflp, ops, rewards, reserve", "Sum 10000. Each 0–5000. satlp at least 1000. ops at most 4000. rewards at least 500."],
+  ["setlimits", "Per-action cap and daily cap", "Max in 50–500. Daily 100–2000. Max in cannot exceed daily. Lock length is not a vote."],
+  ["setcooldown", "Unstake cooldown", "Inside the min and max set at init. Hard ceiling 365 days."],
+  ["setsatlps", "Bot SAT LP fee share", "1000–8000 bps. Stored on the stake contract, not on smartatrader."],
+  ["setbuyback", "Bot buyback share", "0–5000 bps. Stored on the stake contract, not on smartatrader."],
+  ["setrparams", "Stored rate and period", "Rate at most 1000000. Period at least 1 day if the rate is above 0. Not a drip."],
+  ["delnovote", "Remove one novote account", "The airdrop fund stays novote."],
+  ["airdrop", "Merkle drop from the fund", "At most 25% of the fund's stake. At least 7 days to vote and 48 hours of timelock. At most one execute per 30 days."],
+];
+
+export const STAKE_BLOCKED = ["setbot", "setfeercpt", "setpool", "settoken", "setswap", "setdest", "setplan", "setcode", "mint"] as const;
+
+export function stakeBoundsHtml(rows: readonly [string, string, string][] = STAKE_BOUNDS): string {
+  return rows.map(([kind, sets, bound]) => `<tr><td><code>${esc(kind)}</code></td><td>${esc(sets)}</td><td>${esc(bound)}</td></tr>`).join("");
+}
+
+/** What to tell a reader given get_code_hash. Empty or all-zero means the account is not a deployed contract. */
+export function stakeCodeNote(codeHash: string | null | undefined): string {
+  const hex = (codeHash ?? "").trim().toLowerCase().replace(/^0x/, "");
+  if (!STAKE_HASH.test(hex) || /^0+$/.test(hex)) {
+    return "Not on WAX. smartastake1 has not been created. Do not send SAT anywhere to stake.";
+  }
+  if (hex === STAKE_CODE_SHA256) {
+    return "On-chain code matches the published production wasm. The contract is still unaudited.";
+  }
+  return "An account named smartastake1 has code that does not match the published source. Do not use it.";
+}
+

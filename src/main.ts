@@ -1,4 +1,4 @@
-import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
+import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, STAKE_ACCOUNT, STAKE_BLOCKED, stakeBoundsHtml, stakeCodeNote, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
 const NODES = ["https://wax.greymass.com", "https://api.waxsweden.org", "https://wax.eosphere.io", "https://wax.eosdac.io", "https://api.wax.alohaeos.com"];
@@ -52,6 +52,9 @@ function bars(id: string, items: [string, number][]) {
 }
 
 bars("alloc", [["Locked LP (planned)", 35], ["User rewards, 4 years (planned)", 25], ["Treasury, multisig (planned)", 15], ["Team, vested (planned)", 15], ["LEEF community airdrop (sent)", 10]]);
+
+document.getElementById("stake-bounds")!.innerHTML = stakeBoundsHtml();
+document.getElementById("stake-blocked")!.textContent = STAKE_BLOCKED.join(", ");
 
 const NEWTAB = '<span class="sr-only"> (opens in a new tab)</span>';
 const ACCOUNTS: [string, string][] = [
@@ -143,6 +146,16 @@ async function load() {
       if (!l[0]) { set("lock", `Position ${LOCK_POS}: lock not found on-chain right now`); return; }
       const d = new Date(l[0].unlockTime * 1000);
       set("lock", `Position ${LOCK_POS} locked with Alcor lockpos until ${d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}${p[0] ? `; owned by ${p[0].owner}, so trading fees stay claimable` : ""}`);
+    }),
+    run("stake contract", async () => {
+      const el = document.getElementById("stake-live");
+      if (!el) return;
+      try {
+        const j = await rpc<{ code_hash?: string }>("/v1/chain/get_code_hash", { account_name: STAKE_ACCOUNT });
+        el.textContent = stakeCodeNote(j.code_hash);
+      } catch {
+        el.textContent = stakeCodeNote("");
+      }
     }),
   ]);
 

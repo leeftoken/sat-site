@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { airdropTableHtml, AIRDROP_MEMO_PREFIX, AIRDROP_PAGE_SIZE, bucketLines, canon, dec, dedupeAirdropTransfers, esc, feePct, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, sortAirdropTransfers, summarizeAirdrop, tokenomics, tvl, usd } from "../src/lib";
+import { accIncrease, airdropWithinCap, approvalReached, classifyStakeMemo, limitsError, pendingReward, quorumReached, splitError, STAKE_CODE_SHA256, STAKE_SCALE, stakeBoundsHtml, stakeCodeNote } from "../src/lib";
 
 describe("usd", () => {
   it("never uses scientific notation", () => {
@@ -183,5 +184,49 @@ describe("satPools", () => {
     ], "sattoken1111");
     expect(r.map((p) => p.id)).toEqual([2, 1]);
     expect(r[0]).toMatchObject({ pair: "SAT/USDC", sat: 50, other: 1, otherSym: "USDC" });
+  });
+});
+
+describe("stake maths", () => {
+  it("pays 75/25 of 100 SAT and holds a reward when nobody is staked", () => {
+    const incoming = 1_000_000n;
+    const total = 40_000_000n;
+    const acc = accIncrease(incoming, total);
+    expect(pendingReward(30_000_000n, acc, 0n)).toBe(750_000n);
+    expect(pendingReward(10_000_000n, acc, 0n)).toBe(250_000n);
+    expect(accIncrease(incoming, 0n)).toBe(0n);
+    expect(pendingReward(30_000_000n, acc, acc)).toBe(0n);
+    expect(STAKE_SCALE).toBe(10n ** 18n);
+  });
+
+  it("quorum is of votable stake and approval is of votes cast", () => {
+    const snapshot = 41_100_000n;
+    expect(quorumReached(10_000_000n, 0n, snapshot, 5500)).toBe(false);
+    expect(quorumReached(30_000_000n, 10_000_000n, snapshot, 5500)).toBe(true);
+    expect(approvalReached(30_000_000n, 10_000_000n, 5000)).toBe(true);
+    expect(approvalReached(1n, 2n, 5000)).toBe(false);
+  });
+
+  it("caps an airdrop at 25% and rejects bad splits", () => {
+    expect(airdropWithinCap(50_000_000n, 200_000_000n)).toBe(true);
+    expect(airdropWithinCap(50_000_001n, 200_000_000n)).toBe(false);
+    expect(splitError([3000, 2000, 2000, 2000, 1000])).toBeNull();
+    expect(splitError([500, 2000, 3000, 2000, 2500])).toBe("satlp min");
+    expect(limitsError(200, 800)).toBeNull();
+    expect(limitsError(400, 300)).toBe("max_in>daily");
+    expect(classifyStakeMemo("vest", true)).toBe("reward");
+    expect(classifyStakeMemo("vest", false)).toBe("reject");
+    expect(classifyStakeMemo("", false)).toBe("stake");
+  });
+
+  it("treats a missing or foreign code hash as do-not-use", () => {
+    expect(stakeCodeNote("")).toMatch(/Do not send SAT/);
+    expect(stakeCodeNote("0".repeat(64))).toMatch(/has not been created/);
+    expect(stakeCodeNote(STAKE_CODE_SHA256)).toMatch(/matches the published/);
+    expect(stakeCodeNote("ab".repeat(32))).toMatch(/does not match/);
+    expect(stakeBoundsHtml()).toContain("<code>setsplit</code>");
+    const hostile = stakeBoundsHtml([["<b>", "x", "y"]]);
+    expect(hostile).not.toContain("<b>");
+    expect(hostile).toContain("&" + "lt;b&" + "gt;");
   });
 });

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { stakeBoundsHtml } from "../src/lib";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
@@ -40,5 +41,15 @@ describe("public copy", () => {
     expect(html).toContain('href="https://sat-info.vercel.app/"');
     expect(html).not.toMatch(/smart-ass-trading\.vercel\.app/);
     expect(readme).toContain("https://t.me/leefmaincorp");
+  });
+
+  it("says staking is source-only and not a place to send SAT", () => {
+    expect(html).toMatch(/id="stake"/);
+    expect(html).toMatch(/Not deployed and not audited/);
+    expect(html).toMatch(/Do not send SAT/);
+    expect(html).toContain("https://github.com/leeftoken/sat-contracts/tree/main/smartastake");
+    expect(html).toContain(stakeBoundsHtml());
+    expect(html).not.toMatch(/staking is live/i);
+    expect(html).not.toMatch(/stake now/i);
   });
 });
