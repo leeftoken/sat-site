@@ -48,7 +48,7 @@ describe("public copy", () => {
     expect(html).toMatch(/Staking not live yet — contract not deployed, not audited/);
     expect(html).toMatch(/Do not send SAT/);
     expect(html).toContain("https://github.com/leeftoken/sat-contracts/tree/main/smartastake");
-    expect(html).toContain("dff935d9797bac8a16bea24a42b4061cf066a42cd401dd9b541320fc6f42a2ad");
+    expect(html).toContain("557f65faa57a6cdfa500f3ae218fd45db6009314ba399ae55e16e7a90a9c3d79");
     expect(html).toContain(stakeBoundsHtml());
     expect(html).not.toMatch(/staking is live/i);
     expect(html).not.toMatch(/stake now/i);
