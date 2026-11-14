@@ -285,7 +285,7 @@ function renderBanner() {
     banner.innerHTML = "The on-chain code of <code>smartastake1</code> matches the published production hash. SAT is <strong>not audited yet</strong>. Nobody from LEEF will ask for keys or a fee to stake. Official group: <a href=\"https://t.me/leefmaincorp\" target=\"_blank\" rel=\"noopener\">t.me/leefmaincorp<span class=\"sr-only\"> (opens in a new tab)</span></a>.";
   } else {
     banner.className = "note warn stake-banner";
-    banner.innerHTML = "<strong>Staking not live yet — contract not deployed, not audited.</strong> Do not send SAT to <code>smartastake1</code> or <code>smartadrop11</code> until the account exists and the live code hash matches <code>557f65faa57a6cdfa500f3ae218fd45db6009314ba399ae55e16e7a90a9c3d79</code>. Nobody from LEEF will ask for keys or a fee to stake. Official group: <a href=\"https://t.me/leefmaincorp\" target=\"_blank\" rel=\"noopener\">t.me/leefmaincorp<span class=\"sr-only\"> (opens in a new tab)</span></a>.";
+    banner.innerHTML = "<strong>Staking not live yet — contract not deployed, not audited.</strong> Do not send SAT to <code>smartastake1</code> or <code>smartadrop11</code> until the contract is deployed and the live code hash matches <code>557f65faa57a6cdfa500f3ae218fd45db6009314ba399ae55e16e7a90a9c3d79</code>. Nobody from LEEF will ask for keys or a fee to stake. Official group: <a href=\"https://t.me/leefmaincorp\" target=\"_blank\" rel=\"noopener\">t.me/leefmaincorp<span class=\"sr-only\"> (opens in a new tab)</span></a>.";
   }
 }
 

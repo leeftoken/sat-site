@@ -321,11 +321,14 @@ export function stakeBoundsHtml(rows: readonly [string, string, string][] = STAK
   return rows.map(([kind, sets, bound]) => `<tr><td><code>${esc(kind)}</code></td><td>${esc(sets)}</td><td>${esc(bound)}</td></tr>`).join("");
 }
 
-/** What to tell a reader given get_code_hash. Empty or all-zero means the account is not a deployed contract. */
+/** What to tell a reader given get_code_hash. */
 export function stakeCodeNote(codeHash: string | null | undefined): string {
   const hex = (codeHash ?? "").trim().toLowerCase().replace(/^0x/, "");
-  if (!STAKE_HASH.test(hex) || /^0+$/.test(hex)) {
+  if (!STAKE_HASH.test(hex)) {
     return "Not on WAX. smartastake1 has not been created. Do not send SAT anywhere to stake.";
+  }
+  if (/^0+$/.test(hex)) {
+    return "smartastake1 exists on WAX but has no contract code yet. Staking is not live. Do not send SAT to it.";
   }
   if (hex === STAKE_CODE_SHA256) {
     return "On-chain code matches the published production wasm. The contract is still unaudited.";

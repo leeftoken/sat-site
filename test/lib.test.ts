@@ -220,8 +220,9 @@ describe("stake maths", () => {
   });
 
   it("treats a missing or foreign code hash as do-not-use", () => {
-    expect(stakeCodeNote("")).toMatch(/Do not send SAT/);
-    expect(stakeCodeNote("0".repeat(64))).toMatch(/has not been created/);
+    expect(stakeCodeNote("")).toMatch(/has not been created/);
+    expect(stakeCodeNote("0".repeat(64))).toMatch(/has no contract code yet/);
+    expect(stakeCodeNote("0".repeat(64))).not.toMatch(/has not been created/);
     expect(stakeCodeNote(STAKE_CODE_SHA256)).toMatch(/matches the published/);
     expect(stakeCodeNote("ab".repeat(32))).toMatch(/does not match/);
     expect(stakeBoundsHtml()).toContain("<code>setsplit</code>");
