@@ -244,7 +244,7 @@ export function airdropTableHtml(rows: AirdropTransfer[]): string {
 /** Intended stake account. Not created. Production wasm must match before any UI treats it as live. */
 export const STAKE_ACCOUNT = "smartastake1";
 export const STAKE_AIRDROP_ACCOUNT = "smartadrop11";
-export const STAKE_CODE_SHA256 = "7aaf7c0010df315874924ca0dcf7b6995a1b20eed7aad8077ff27f56e4c5c6b4";
+export const STAKE_CODE_SHA256 = "dff935d9797bac8a16bea24a42b4061cf066a42cd401dd9b541320fc6f42a2ad";
 export const STAKE_SCALE = 10n ** 18n;
 const STAKE_HASH = /^[0-9a-f]{64}$/;
 
