@@ -60,8 +60,8 @@ const NEWTAB = '<span class="sr-only"> (opens in a new tab)</span>';
 const ACCOUNTS: [string, string][] = [
   ["sattoken1111", "SAT token contract (eosio.token code)"],
   ["smartatrader", "leeftrader contract: plans, splits, caps, LP lock"],
-  ["smartaadmin1", "Admin and SAT issuer, 2-of-3 multisig; sent the first SAT airdrop (remainder held here)"],
-  ["smartafees11", "Receives LP fees, 2-of-3 multisig; owns position 153128"],
+  ["smartaadmin1", "SAT admin and issuer; verify the live authority threshold and signers on-chain. Sent the first SAT airdrop (remainder held here)."],
+  ["smartafees11", "Receives LP fees and owns position 153128; verify its live signer threshold on-chain."],
   ["smartabot111", "Bot account with limited permission"],
   ["leefmaincorp", "LEEF token contract"],
   ["swap.alcor", "Alcor CLMM: pools, swaps, lockpos"],
@@ -107,7 +107,7 @@ async function load() {
       set("airdrop-sent", sent > 0 ? `${fmt(sent, 4)} SAT sent (${fmt((sent / AIRDROP_BUDGET) * 100, 2)}%)` : "First airdrop recorded as sent 9 Nov 2026");
       set("t-issued", `${fmt(t.issued)} SAT (${fmt(t.issuedPct, 1)}% of max)`);
       set("t-max", `${fmt(t.max)} SAT`);
-      set("t-mintable", `${fmt(t.mintable)} SAT not issued yet. smartaadmin1 (the 2-of-3 multisig issuer) can still mint up to the cap.`);
+      set("t-mintable", `${fmt(t.mintable)} SAT not issued yet. The configured issuer account can still mint up to the cap; its live authority threshold and signers must be verified independently.`);
       set("t-pool", lp ? `${fmt(locked)} SAT in locked position ${LOCK_POS} (SAT/LEEF pool ${POOL})` : `Position ${LOCK_POS} not readable right now`);
       set("t-otherpools", `${fmt(otherPools)} SAT in other Alcor positions (not locked)`);
       set("t-locked", `${fmt(t.lockedPctMax, 1)}% of max supply · ${fmt(t.lockedPctIssued, 1)}% of issued supply`);
