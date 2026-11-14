@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { airdropTableHtml, AIRDROP_MEMO_PREFIX, AIRDROP_PAGE_SIZE, bucketLines, canon, dec, dedupeAirdropTransfers, esc, feePct, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, sortAirdropTransfers, summarizeAirdrop, tokenomics, tvl, usd } from "../src/lib";
-import { accIncrease, airdropWithinCap, approvalReached, classifyStakeMemo, limitsError, pendingReward, quorumReached, splitError, STAKE_CODE_SHA256, STAKE_SCALE, stakeBoundsHtml, stakeCodeNote } from "../src/lib";
+import { accIncrease, airdropWithinCap, approvalReached, claimableUnits, classifyStakeMemo, formatSat, join128, limitsError, parseSatInput, pendingReward, quorumReached, signingAllowed, splitError, STAKE_CODE_SHA256, STAKE_SCALE, stakeBoundsHtml, stakeCodeLive, stakeCodeNote, stakeTransferAction, unstakeAction, claimAction, withdrawAction, SAT_CONTRACT, STAKE_ACCOUNT, canClaim, canUnstake, canWithdraw } from "../src/lib";
 
 describe("usd", () => {
   it("never uses scientific notation", () => {
@@ -228,5 +228,83 @@ describe("stake maths", () => {
     const hostile = stakeBoundsHtml([["<b>", "x", "y"]]);
     expect(hostile).not.toContain("<b>");
     expect(hostile).toContain("&" + "lt;b&" + "gt;");
+  });
+});
+
+describe("claimable reward math", () => {
+  it("joins the 128-bit accumulator and adds stale pending_rewards", () => {
+    const incoming = 1_000_000n;
+    const total = 40_000_000n;
+    const acc = accIncrease(incoming, total);
+    const hi = acc >> 64n;
+    const lo = acc & ((1n << 64n) - 1n);
+    expect(join128(hi, lo)).toBe(acc);
+    expect(join128(String(hi), String(lo))).toBe(acc);
+    // Stored pending is stale (100), plus unpaid increment 750_000 on 30 SAT.
+    const claimable = claimableUnits(
+      { amount: 30_000_000n, paid_hi: 0, paid_lo: 0, pending_rewards: 100 },
+      { rpt_hi: hi, rpt_lo: lo },
+    );
+    expect(claimable).toBe(750_100n);
+    expect(claimableUnits(
+      { amount: 30_000_000n, paid_hi: hi, paid_lo: lo, pending_rewards: 750_000n },
+      { rpt_hi: hi, rpt_lo: lo },
+    )).toBe(750_000n);
+    expect(claimableUnits(
+      { amount: 0n, paid_hi: 0, paid_lo: 0, pending_rewards: 5 },
+      { rpt_hi: hi, rpt_lo: lo },
+    )).toBe(5n);
+  });
+
+  it("formats and parses 4-decimal SAT", () => {
+    expect(formatSat(12_345_6789n)).toBe("12,345.6789");
+    expect(formatSat(0n)).toBe("0.0000");
+    expect(parseSatInput("12,345.6789")).toBe(123456789n);
+    expect(parseSatInput("1.5")).toBe(15_000n);
+    expect(parseSatInput("1.55555")).toBeNull();
+    expect(parseSatInput("-1")).toBeNull();
+  });
+});
+
+describe("hash gate", () => {
+  it("enables signing only when two nodes agree on the published hash and the contract is inited", () => {
+    expect(stakeCodeLive(STAKE_CODE_SHA256)).toBe(true);
+    expect(stakeCodeLive("0x" + STAKE_CODE_SHA256.toUpperCase())).toBe(true);
+    expect(stakeCodeLive("0".repeat(64))).toBe(false);
+    expect(stakeCodeLive("")).toBe(false);
+    expect(stakeCodeLive("ab".repeat(32))).toBe(false);
+    expect(signingAllowed(STAKE_CODE_SHA256, 2, true)).toBe(true);
+    expect(signingAllowed(STAKE_CODE_SHA256, 1, true)).toBe(false);
+    expect(signingAllowed(STAKE_CODE_SHA256, 2, false)).toBe(false);
+    expect(signingAllowed("", 2, true)).toBe(false);
+    expect(signingAllowed("ab".repeat(32), 2, true)).toBe(false);
+  });
+});
+
+describe("stake actions", () => {
+  it("builds ABI-accurate actions", () => {
+    expect(stakeTransferAction("alice.wam", 15_000n)).toEqual({
+      account: SAT_CONTRACT,
+      name: "transfer",
+      data: { from: "alice.wam", to: STAKE_ACCOUNT, quantity: "1.5000 SAT", memo: "stake" },
+    });
+    expect(unstakeAction("alice.wam", 15_000n)).toEqual({
+      account: STAKE_ACCOUNT,
+      name: "unstake",
+      data: { owner: "alice.wam", amount: "15000" },
+    });
+    expect(claimAction("alice.wam")).toEqual({ account: STAKE_ACCOUNT, name: "claim", data: { owner: "alice.wam" } });
+    expect(withdrawAction("alice.wam")).toEqual({ account: STAKE_ACCOUNT, name: "withdraw", data: { owner: "alice.wam" } });
+  });
+
+  it("gates unstake, withdraw and claim the same way the contract does", () => {
+    expect(canUnstake({ amount: 1n, nowSec: 10, voteLockUntil: 20, isAirdrop: false })).toBe(false);
+    expect(canUnstake({ amount: 1n, nowSec: 20, voteLockUntil: 20, isAirdrop: false })).toBe(true);
+    expect(canUnstake({ amount: 1n, nowSec: 30, voteLockUntil: 0, isAirdrop: true })).toBe(false);
+    expect(canWithdraw({ cooling: 1n, nowSec: 10, ready: 20, isAirdrop: false })).toBe(false);
+    expect(canWithdraw({ cooling: 1n, nowSec: 20, ready: 20, isAirdrop: false })).toBe(true);
+    expect(canClaim({ claimable: 0n, isAirdrop: false })).toBe(false);
+    expect(canClaim({ claimable: 1n, isAirdrop: false })).toBe(true);
+    expect(canClaim({ claimable: 1n, isAirdrop: true })).toBe(false);
   });
 });

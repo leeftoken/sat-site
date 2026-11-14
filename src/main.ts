@@ -1,4 +1,4 @@
-import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, STAKE_ACCOUNT, STAKE_BLOCKED, stakeBoundsHtml, stakeCodeNote, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
+import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, STAKE_BLOCKED, stakeBoundsHtml, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
 const NODES = ["https://wax.greymass.com", "https://api.waxsweden.org", "https://wax.eosphere.io", "https://wax.eosdac.io", "https://api.wax.alohaeos.com"];
@@ -147,16 +147,7 @@ async function load() {
       const d = new Date(l[0].unlockTime * 1000);
       set("lock", `Position ${LOCK_POS} locked with Alcor lockpos until ${d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}${p[0] ? `; owned by ${p[0].owner}, so trading fees stay claimable` : ""}`);
     }),
-    run("stake contract", async () => {
-      const el = document.getElementById("stake-live");
-      if (!el) return;
-      try {
-        const j = await rpc<{ code_hash?: string }>("/v1/chain/get_code_hash", { account_name: STAKE_ACCOUNT });
-        el.textContent = stakeCodeNote(j.code_hash);
-      } catch {
-        el.textContent = stakeCodeNote("");
-      }
-    }),
+    run("stake contract", () => refreshStakeUi()),
   ]);
 
   // Buckets are scoped per bucket name, one row per token.
@@ -311,4 +302,9 @@ function tick() {
   running.then(() => { clearTimeout(timer); if (!document.hidden) timer = setTimeout(tick, REFRESH_MS); });
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) clearTimeout(timer); else tick(); });
+let refreshStakeUi: () => Promise<void> = async () => {};
+void import("./stake").then((m) => {
+  refreshStakeUi = m.refreshStakeUi;
+  return m.initStake({ rpc, rows, withTimeout });
+});
 tick();

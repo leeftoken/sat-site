@@ -43,13 +43,21 @@ describe("public copy", () => {
     expect(readme).toContain("https://t.me/leefmaincorp");
   });
 
-  it("says staking is source-only and not a place to send SAT", () => {
+  it("keeps the staking UI behind a not-live banner and disabled signing buttons", () => {
     expect(html).toMatch(/id="stake"/);
-    expect(html).toMatch(/Not deployed and not audited/);
+    expect(html).toMatch(/Staking not live yet — contract not deployed, not audited/);
     expect(html).toMatch(/Do not send SAT/);
     expect(html).toContain("https://github.com/leeftoken/sat-contracts/tree/main/smartastake");
+    expect(html).toContain("dff935d9797bac8a16bea24a42b4061cf066a42cd401dd9b541320fc6f42a2ad");
     expect(html).toContain(stakeBoundsHtml());
     expect(html).not.toMatch(/staking is live/i);
     expect(html).not.toMatch(/stake now/i);
+    expect(html).toMatch(/Stake SAT/);
+    expect(html).toMatch(/id="stake-submit"[^>]*disabled/);
+    expect(html).toMatch(/id="unstake-submit"[^>]*disabled/);
+    expect(html).toMatch(/id="withdraw-submit"[^>]*disabled/);
+    expect(html).toMatch(/id="claim-submit"[^>]*disabled/);
+    expect(html).toMatch(/Governance \(coming soon\)/);
+    expect(html).toContain("https://t.me/leefmaincorp");
   });
 });

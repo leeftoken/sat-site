@@ -6,7 +6,7 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://wax.greymass.com https://api.waxsweden.org https://wax.eosphere.io https://wax.eosdac.io https://api.wax.alohaeos.com https://wax.alcor.exchange; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://www.mycloudwallet.com https://anchorwallet.io; font-src 'self'; connect-src 'self' https://wax.greymass.com https://wax.eosusa.io https://api.waxsweden.org https://wax.eosphere.io https://wax.eosdac.io https://api.wax.alohaeos.com https://wax.alcor.exchange https://www.mycloudwallet.com https://cb.anchor.link wss://cb.anchor.link; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "X-Frame-Options", "value": "DENY" },

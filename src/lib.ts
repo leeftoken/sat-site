@@ -333,3 +333,172 @@ export function stakeCodeNote(codeHash: string | null | undefined): string {
   return "An account named smartastake1 has code that does not match the published source. Do not use it.";
 }
 
+
+
+export const WAX_CHAIN_ID = "1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4";
+/** Preferred get_code_hash hosts for the signing gate (task-specified), tried in this order. */
+export const STAKE_HASH_NODES = ["https://wax.greymass.com", "https://wax.eosusa.io", "https://wax.eosphere.io"] as const;
+export const SAT_PRECISION = 4;
+export const SAT_UNITS = 10n ** BigInt(SAT_PRECISION);
+export const CPH_TZ = "Europe/Copenhagen";
+
+/** Chain JSON may give int64/uint64 as a number or a decimal string. */
+export function toInt(v: unknown): bigint {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v) || !Number.isInteger(v)) throw new Error("int");
+    return BigInt(v);
+  }
+  if (typeof v === "string" && /^-?\d+$/.test(v.trim())) return BigInt(v.trim());
+  throw new Error("int");
+}
+
+/** Reconstruct the 1e18-scale reward-per-token accumulator from the split uint64 words. */
+export function join128(hi: unknown, lo: unknown): bigint {
+  return (toInt(hi) << 64n) + toInt(lo);
+}
+
+export interface StakeAccrual {
+  amount: unknown;
+  paid_hi: unknown;
+  paid_lo: unknown;
+  pending_rewards: unknown;
+}
+
+export interface RewardAcc {
+  rpt_hi: unknown;
+  rpt_lo: unknown;
+}
+
+/**
+ * Claimable SAT in smallest units. Mirrors smartastake::settle:
+ * pending_rewards + amount * (rpt - paid) / 1e18, truncated toward zero.
+ * The stored pending_rewards field is stale until the next settle; this
+ * recomputes the unpaid increment. Does not apply flush() of
+ * reward_pending_undistributed — claim() also does not.
+ */
+export function claimableUnits(stake: StakeAccrual, acc: RewardAcc): bigint {
+  const pending = toInt(stake.pending_rewards);
+  const owed = pendingReward(toInt(stake.amount), join128(acc.rpt_hi, acc.rpt_lo), join128(stake.paid_hi, stake.paid_lo));
+  return pending + owed;
+}
+
+export function normalizeCodeHash(hash: string | null | undefined): string {
+  return (hash ?? "").trim().toLowerCase().replace(/^0x/, "");
+}
+
+export function stakeCodeLive(codeHash: string | null | undefined): boolean {
+  const hex = normalizeCodeHash(codeHash);
+  return STAKE_HASH.test(hex) && hex === STAKE_CODE_SHA256;
+}
+
+/**
+ * Signing is allowed only when at least two RPC nodes agree on the hash,
+ * that hash equals the published production wasm, and the contract is inited.
+ */
+export function signingAllowed(codeHash: string | null | undefined, agreed: number, inited: boolean): boolean {
+  return agreed >= 2 && inited && stakeCodeLive(codeHash);
+}
+
+/** Chain quantity string (no thousands separators): "1234.5678 SAT". */
+export function satQuantity(units: bigint): string {
+  return `${formatSatRaw(units)} SAT`;
+}
+
+export function formatSatRaw(units: bigint): string {
+  const sign = units < 0n ? "-" : "";
+  const n = units < 0n ? -units : units;
+  return `${sign}${n / SAT_UNITS}.${(n % SAT_UNITS).toString().padStart(SAT_PRECISION, "0")}`;
+}
+
+/** Display SAT with thousands separators and exactly 4 decimals. */
+export function formatSat(units: bigint): string {
+  const sign = units < 0n ? "-" : "";
+  const n = units < 0n ? -units : units;
+  const whole = (n / SAT_UNITS).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${sign}${whole}.${(n % SAT_UNITS).toString().padStart(SAT_PRECISION, "0")}`;
+}
+
+/** Parse a user-typed SAT amount (up to 4 decimals) into smallest units. */
+export function parseSatInput(s: string): bigint | null {
+  const t = s.trim().replace(/,/g, "");
+  if (!/^\d+(\.\d{1,4})?$/.test(t)) return null;
+  const [w, f = ""] = t.split(".");
+  return BigInt(w) * SAT_UNITS + BigInt(f.padEnd(SAT_PRECISION, "0"));
+}
+
+export function formatDuration(ms: number): string {
+  if (ms <= 0) return "0s";
+  const s = Math.ceil(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}
+
+export function formatCph(unixSec: number): string {
+  return new Date(unixSec * 1000).toLocaleString("en-GB", {
+    timeZone: CPH_TZ,
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZoneName: "short",
+  });
+}
+
+/** Share of the pool as a percent with 2 decimals, truncated. */
+export function poolSharePct(amount: bigint, total: bigint): string {
+  if (amount <= 0n || total <= 0n) return "0.00%";
+  const hundredths = (amount * 10000n) / total;
+  return `${hundredths / 100n}.${(hundredths % 100n).toString().padStart(2, "0")}%`;
+}
+
+export interface StakeTransferAction {
+  account: string;
+  name: "transfer";
+  data: { from: string; to: string; quantity: string; memo: "stake" };
+}
+
+export interface UnstakeAction {
+  account: string;
+  name: "unstake";
+  data: { owner: string; amount: string };
+}
+
+export interface OwnerAction {
+  account: string;
+  name: "claim" | "withdraw";
+  data: { owner: string };
+}
+
+export function stakeTransferAction(from: string, units: bigint): StakeTransferAction {
+  if (units <= 0n) throw new Error("amount");
+  return { account: SAT_CONTRACT, name: "transfer", data: { from, to: STAKE_ACCOUNT, quantity: satQuantity(units), memo: "stake" } };
+}
+
+export function unstakeAction(owner: string, units: bigint): UnstakeAction {
+  if (units <= 0n) throw new Error("amount");
+  return { account: STAKE_ACCOUNT, name: "unstake", data: { owner, amount: units.toString() } };
+}
+
+export function claimAction(owner: string): OwnerAction {
+  return { account: STAKE_ACCOUNT, name: "claim", data: { owner } };
+}
+
+export function withdrawAction(owner: string): OwnerAction {
+  return { account: STAKE_ACCOUNT, name: "withdraw", data: { owner } };
+}
+
+export function canUnstake(opts: { amount: bigint; nowSec: number; voteLockUntil: number; isAirdrop: boolean }): boolean {
+  return !opts.isAirdrop && opts.amount > 0n && opts.nowSec >= opts.voteLockUntil;
+}
+
+export function canWithdraw(opts: { cooling: bigint; nowSec: number; ready: number; isAirdrop: boolean }): boolean {
+  return !opts.isAirdrop && opts.cooling > 0n && opts.nowSec >= opts.ready;
+}
+
+export function canClaim(opts: { claimable: bigint; isAirdrop: boolean }): boolean {
+  return !opts.isAirdrop && opts.claimable > 0n;
+}
