@@ -117,8 +117,21 @@ h1 {
   animation: pulse 1.6s ease-out infinite;
 }
 
+.status.warn { color: var(--warn); }
+.status.warn::before { background: var(--warn); animation: none; }
 .status.err { color: var(--err); }
 .status.err::before { background: var(--err); animation: none; }
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-top: 0.65rem;
+}
+.status-row .status { min-width: 0; overflow-wrap: anywhere; }
+.refresh-button { flex: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.refresh-button:disabled { opacity: 0.55; cursor: progress; }
 
 .toc {
   display: flex;
@@ -353,7 +366,10 @@ button.page:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 
 @media (max-width: 720px) {
-  .metrics { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metrics:not(.stake-metrics) .metric:last-child { grid-column: 1 / -1; }
+  .metric { min-width: 0; padding: 0.85rem; }
+  .metric .v { overflow-wrap: anywhere; font-size: clamp(1.45rem, 6vw, 2rem); }
   .bar { grid-template-columns: 1fr auto; }
   .bar .t { grid-column: 1 / -1; }
   .hero { position: static; }
