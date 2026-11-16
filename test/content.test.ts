@@ -61,3 +61,26 @@ describe("public copy", () => {
     expect(html).toContain("https://t.me/leefmaincorp");
   });
 });
+
+
+describe("dashboard navigation and live status controls", () => {
+  const css = readFileSync(new URL("../src/style.css", import.meta.url), "utf8");
+
+  it("puts the live dashboard before explanatory detail and exposes manual refresh", () => {
+    expect(html.indexOf('id="stats"')).toBeLessThan(html.indexOf('id="what"'));
+    expect(html).toContain('id="refresh-now"');
+    expect(html).toContain('id="status-announcement"');
+    expect(html).toContain('href="#satpools">Pools</a>');
+  });
+
+  it("keeps SAT snapshot metrics readable in a two-column mobile layout", () => {
+    expect(css).toContain(".metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }");
+    expect(css).toContain(".metrics:not(.stake-metrics) .metric:last-child { grid-column: 1 / -1; }");
+  });
+
+  it("uses a short active refresh cadence and renders data quality", () => {
+    expect(main).toContain("SAT_REFRESH_INTERVAL_MS");
+    expect(main).toContain("renderDataStatus");
+    expect(main).toContain("status-announcement");
+  });
+});
