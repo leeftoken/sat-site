@@ -29,18 +29,18 @@
         <p class="tag">Smart Ass Trading</p>
       </div>
     </div>
-    <p class="lead">SAT is the WAX token behind the LEEF Trader bot, a sub-system of LEEF on WAX — not Bitcoin satoshis. Stats below are read live from WAX and Alcor. Nothing on this page is typed in by hand.</p>
-    <p class="status" id="status" role="status" aria-live="polite">Loading live data…</p>
+    <p class="lead">SAT is the WAX token behind the LEEF Trader bot, a sub-system of LEEF on WAX — not Bitcoin satoshis. Live metrics are read from WAX and Alcor; historical and planned figures are labelled separately.</p>
+    <div class="status-row">
+      <p class="status warn" id="status" role="status" aria-live="off">Connecting to WAX and Alcor…</p>
+      <button type="button" class="page refresh-button" id="refresh-now" aria-label="Refresh SAT data now">Refresh now</button>
+    </div>
+    <p class="sr-only" id="status-announcement" aria-live="polite"></p>
     <nav class="toc" aria-label="Sections">
-      <a href="#what">What SAT is</a><a href="#stats">Live</a><a href="#pool">Pool</a><a href="#tokenomics">Supply</a><a href="#split">Split</a><a href="#plans">Plans</a><a href="#stake">Staking</a><a href="#airdrop">Distribution</a><a href="#accounts">Contracts</a><a href="#safety">Safety</a><a href="#links">Links</a>
+      <a href="#stats">Live</a><a href="#what">About SAT</a><a href="#pool">Pool</a><a href="#satpools">Pools</a><a href="#tokenomics">Supply</a><a href="#split">Split</a><a href="#plans">Plans</a><a href="#stake">Staking</a><a href="#airdrop">Distribution</a><a href="#accounts">Contracts</a><a href="#safety">Safety</a><a href="#links">Links</a>
     </nav>
   </header>
 
-  <section id="what"><h2>What SAT is</h2>
-    <p>SAT (Smart Ass Trading) is a WAX token (<code>SAT@sattoken1111</code>), not Bitcoin satoshis. It is tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and <span data-k="lpshare">–</span> (live from the <code>splits</code> table) goes to deepening SAT and LEEF liquidity on Alcor.</p>
-  </section>
-
-  <section id="stats"><h2>Live stats</h2>
+  <section id="stats"><h2>Live snapshot</h2>
     <div class="metrics">
       <div class="metric"><span class="v" data-k="supply">–</span><span class="l">SAT issued</span><span class="d" data-k="max">of – max</span></div>
       <div class="metric"><span class="v" data-k="airdrop">–</span><span class="l">SAT left in smartaadmin1</span><span class="d" data-k="airdrop-sent">after the first airdrop</span></div>
@@ -53,6 +53,10 @@
       <dt>Contract status</dt><dd data-k="config">–</dd>
       <dt>Trading buckets</dt><dd data-k="buckets">–</dd>
     </dl>
+  </section>
+
+  <section id="what"><h2>What SAT is</h2>
+    <p>SAT (Smart Ass Trading) is a WAX token (<code>SAT@sattoken1111</code>), not Bitcoin satoshis. It is tied to the LEEF Trader platform and its Telegram bot. Bot subscriptions paid in Telegram Stars, USDT or WAX are split by the <code>smartatrader</code> contract, and <span data-k="lpshare">–</span> (live from the <code>splits</code> table) goes to deepening SAT and LEEF liquidity on Alcor.</p>
   </section>
 
   <section id="pool"><h2>SAT/LEEF pool</h2>
