@@ -14,7 +14,7 @@ export function classifyDataQuality(
   singleSource: boolean,
   staleAfterMs = SAT_STALE_AFTER_MS,
 ): DataQuality {
-  if (ageMs === null || !Number.isFinite(ageMs)) return "loading";
+  if (ageMs === null || !Number.isFinite(ageMs)) return hasErrors ? "partial" : "loading";
   if (ageMs < 0 || ageMs > staleAfterMs) return "stale";
   if (hasErrors) return "partial";
   if (singleSource) return "limited";
@@ -25,4 +25,18 @@ export function classifyDataQuality(
 export function nextRefreshDelayMs(degradedStreak = 0): number {
   const step = Math.min(2, Math.max(0, Math.floor(Number.isFinite(degradedStreak) ? degradedStreak : 0)));
   return SAT_REFRESH_INTERVAL_MS * (2 ** step);
+}
+
+
+/**
+ * Advance the freshness clock only after every dashboard data group succeeds.
+ * A partial failure keeps the previous fully refreshed timestamp intact.
+ */
+export function recordLastGoodRefresh(
+  previousGoodAt: number,
+  attemptedAt: number,
+  hasErrors: boolean,
+): number {
+  if (hasErrors || !Number.isFinite(attemptedAt) || attemptedAt <= 0) return previousGoodAt;
+  return attemptedAt;
 }

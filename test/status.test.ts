@@ -31,3 +31,16 @@ describe("classifyDataQuality", () => {
     expect(nextRefreshDelayMs(2)).toBe(120_000);
     expect(nextRefreshDelayMs(8)).toBe(120_000);
   });
+
+
+it("reports a partial state before the first fully successful refresh", () => {
+  expect(classifyDataQuality(null, true, false)).toBe("partial");
+  expect(classifyDataQuality(null, false, false)).toBe("loading");
+});
+
+it("preserves the last-good timestamp when a refresh partially fails", async () => {
+  const { recordLastGoodRefresh } = await import("../src/status");
+  expect(recordLastGoodRefresh(1_000, 31_000, true)).toBe(1_000);
+  expect(recordLastGoodRefresh(1_000, 31_000, false)).toBe(31_000);
+  expect(recordLastGoodRefresh(0, 31_000, true)).toBe(0);
+});

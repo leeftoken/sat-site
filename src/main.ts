@@ -1,4 +1,4 @@
-import { classifyDataQuality, nextRefreshDelayMs, SAT_REFRESH_INTERVAL_MS } from "./status";
+import { classifyDataQuality, nextRefreshDelayMs, recordLastGoodRefresh, SAT_REFRESH_INTERVAL_MS } from "./status";
 import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, STAKE_BLOCKED, stakeBoundsHtml, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
@@ -11,7 +11,8 @@ const LOCK_POS = 153128;
 const AIRDROP_BUDGET = 10_000_000; // SAT issued to smartaadmin1 for the airdrop (tx cde3ce9c…)
 const SAT = SAT_CONTRACT;
 const REFRESH_MS = SAT_REFRESH_INTERVAL_MS;
-let lastLoadAt = 0;
+let lastGoodLoadAt = 0;
+let lastAttemptAt = 0;
 let lastLoadErrors: string[] = [];
 let lastLoadSingleSource = false;
 let refreshInFlight = false;
@@ -55,7 +56,7 @@ function renderDataStatus(announce = false) {
   if (!status) return;
   const announcement = document.getElementById("status-announcement");
   const now = Date.now();
-  const ageMs = lastLoadAt > 0 ? now - lastLoadAt : null;
+  const ageMs = lastGoodLoadAt > 0 ? now - lastGoodLoadAt : null;
   const quality = classifyDataQuality(ageMs, lastLoadErrors.length > 0, lastLoadSingleSource);
   const labels = {
     loading: "CONNECTING",
@@ -69,13 +70,17 @@ function renderDataStatus(announce = false) {
     : lastLoadSingleSource
       ? " · at least one WAX read had only single-node confirmation"
       : " · WAX quorum + Alcor";
-  const ageText = ageMs == null ? "" : ` · updated ${new Date(lastLoadAt).toLocaleTimeString()} · ${Math.max(0, Math.floor(ageMs / 1_000))}s ago`;
-  const nextText = ageMs == null ? "" : ` · next refresh in ${Math.max(0, Math.ceil((lastLoadAt + nextRefreshMs - now) / 1_000))}s`;
+  const ageText = ageMs == null
+    ? lastAttemptAt > 0 ? " · no complete refresh has succeeded yet" : ""
+    : ` · last complete update ${new Date(lastGoodLoadAt).toLocaleTimeString()} · ${Math.max(0, Math.floor(ageMs / 1_000))}s ago`;
+  const nextText = lastAttemptAt > 0
+    ? ` · next refresh in ${Math.max(0, Math.ceil((lastAttemptAt + nextRefreshMs - now) / 1_000))}s`
+    : "";
   const refreshingText = refreshInFlight ? " · refreshing" : "";
   status.className = quality === "live" ? "status" : quality === "partial" ? "status err" : "status warn";
   status.textContent = `${labels[quality]}${ageText}${nextText}${refreshingText}${quality === "loading" ? "" : detail}`;
   if (announce && announcement) {
-    announcement.textContent = `SAT dashboard: ${labels[quality].toLowerCase()}. ${ageMs == null ? "Waiting for first data." : `Last refresh ${Math.floor(ageMs / 1_000)} seconds ago.`}${detail.replaceAll(" · ", ". ")}`;
+    announcement.textContent = `SAT dashboard: ${labels[quality].toLowerCase()}. ${ageMs == null ? lastAttemptAt > 0 ? "No complete refresh has succeeded yet." : "Waiting for first data." : `Last complete data refresh ${Math.floor(ageMs / 1_000)} seconds ago.`}${detail.replaceAll(" · ", ". ")}`;
   }
 }
 
@@ -130,7 +135,7 @@ async function load() {
       const [s, admin, inAlcor, pos] = await Promise.all([
         rpc<Record<string, { supply: string; max_supply: string }>>("/v1/chain/get_currency_stats", { code: SAT, symbol: "SAT" }),
         bal("smartaadmin1"), bal("swap.alcor"),
-        alcor<{ id: number; amountB: string; isLocked: boolean }[]>("/account/smartafees11/positions").catch(() => []),
+        alcor<{ id: number; amountB: string; isLocked: boolean }[]>("/account/smartafees11/positions"),
       ]);
       const lp = pos.find((p) => Number(p.id) === LOCK_POS);
       const locked = lp && lp.isLocked ? amt(lp.amountB) : 0;
@@ -210,7 +215,8 @@ async function load() {
     document.getElementById("satpools-body")!.innerHTML = list.map((p) => `<tr><td><a href="https://wax.alcor.exchange/swap?pool=${p.id}" target="_blank" rel="noopener">${p.id}${NEWTAB}</a></td><td>${esc(p.pair)}</td><td class="r">${feePct(p.fee)}%</td><td class="r">${fmt(p.sat)}</td><td class="r">${fmt(p.other, 6)} ${esc(p.otherSym)}</td></tr>`).join("") || `<tr><td colspan="5">None found</td></tr>`;
   });
 
-  lastLoadAt = Date.now();
+  lastAttemptAt = Date.now();
+  lastGoodLoadAt = recordLastGoodRefresh(lastGoodLoadAt, lastAttemptAt, errs.length > 0);
   lastLoadErrors = errs;
   lastLoadSingleSource = singleSource;
   degradedRefreshStreak = errs.length > 0 || singleSource
@@ -344,6 +350,7 @@ function tick() {
     if (button) button.disabled = true;
     running = load()
       .catch(() => {
+        lastAttemptAt = Date.now();
         lastLoadErrors = ["dashboard refresh failed"];
         lastLoadSingleSource = false;
         degradedRefreshStreak = Math.min(2, degradedRefreshStreak + 1);
