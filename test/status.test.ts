@@ -23,3 +23,11 @@ describe("classifyDataQuality", () => {
     expect(classifyDataQuality(null, false, false)).toBe("loading");
   });
 });
+
+  it("keeps healthy refreshes at 30 seconds and backs off degraded providers", async () => {
+    const { nextRefreshDelayMs } = await import("../src/status");
+    expect(nextRefreshDelayMs(0)).toBe(30_000);
+    expect(nextRefreshDelayMs(1)).toBe(60_000);
+    expect(nextRefreshDelayMs(2)).toBe(120_000);
+    expect(nextRefreshDelayMs(8)).toBe(120_000);
+  });
