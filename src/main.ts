@@ -1,4 +1,4 @@
-import { classifyDataQuality, SAT_REFRESH_INTERVAL_MS } from "./status";
+import { classifyDataQuality, nextRefreshDelayMs, SAT_REFRESH_INTERVAL_MS } from "./status";
 import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, STAKE_BLOCKED, stakeBoundsHtml, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
@@ -15,6 +15,8 @@ let lastLoadAt = 0;
 let lastLoadErrors: string[] = [];
 let lastLoadSingleSource = false;
 let refreshInFlight = false;
+let degradedRefreshStreak = 0;
+let nextRefreshMs = REFRESH_MS;
 const TIMEOUT_MS = 6000;
 const HISTORY_TIMEOUT_MS = 15_000;
 const HISTORY_PAGE = 100;
@@ -68,7 +70,7 @@ function renderDataStatus(announce = false) {
       ? " · at least one WAX read had only single-node confirmation"
       : " · WAX quorum + Alcor";
   const ageText = ageMs == null ? "" : ` · updated ${new Date(lastLoadAt).toLocaleTimeString()} · ${Math.max(0, Math.floor(ageMs / 1_000))}s ago`;
-  const nextText = ageMs == null ? "" : ` · next refresh in ${Math.max(0, Math.ceil((lastLoadAt + REFRESH_MS - now) / 1_000))}s`;
+  const nextText = ageMs == null ? "" : ` · next refresh in ${Math.max(0, Math.ceil((lastLoadAt + nextRefreshMs - now) / 1_000))}s`;
   const refreshingText = refreshInFlight ? " · refreshing" : "";
   status.className = quality === "live" ? "status" : quality === "partial" ? "status err" : "status warn";
   status.textContent = `${labels[quality]}${ageText}${nextText}${refreshingText}${quality === "loading" ? "" : detail}`;
@@ -211,6 +213,10 @@ async function load() {
   lastLoadAt = Date.now();
   lastLoadErrors = errs;
   lastLoadSingleSource = singleSource;
+  degradedRefreshStreak = errs.length > 0 || singleSource
+    ? Math.min(2, degradedRefreshStreak + 1)
+    : 0;
+  nextRefreshMs = nextRefreshDelayMs(degradedRefreshStreak);
   renderDataStatus(true);
 }
 
@@ -338,8 +344,10 @@ function tick() {
     if (button) button.disabled = true;
     running = load()
       .catch(() => {
-        lastLoadErrors = [...lastLoadErrors, "dashboard refresh"];
-        lastLoadSingleSource = singleSource;
+        lastLoadErrors = ["dashboard refresh failed"];
+        lastLoadSingleSource = false;
+        degradedRefreshStreak = Math.min(2, degradedRefreshStreak + 1);
+        nextRefreshMs = nextRefreshDelayMs(degradedRefreshStreak);
         renderDataStatus(true);
       })
       .finally(() => {
@@ -347,7 +355,7 @@ function tick() {
         refreshInFlight = false;
         renderDataStatus();
         if (button) button.disabled = false;
-        if (!document.hidden) timer = setTimeout(tick, REFRESH_MS);
+        if (!document.hidden) timer = setTimeout(tick, nextRefreshMs);
       });
   }
   maybeAirdrop();
