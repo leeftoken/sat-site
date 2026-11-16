@@ -1,3 +1,4 @@
+import { classifyDataQuality, SAT_REFRESH_INTERVAL_MS } from "./status";
 import { amt, airdropTableHtml, AIRDROP_FROM, AIRDROP_PAGE_SIZE, bucketLines, dec, dedupeAirdropTransfers, esc, feePct, fmt, lpShare, paginateAirdrop, parseAirdropTransfers, planPrices, quorum, SAT_CONTRACT, satPools, sortAirdropTransfers, STAKE_BLOCKED, stakeBoundsHtml, summarizeAirdrop, tokenomics, tvl, usd, type AirdropTransfer, type BucketRow, type Plan, type Row } from "./lib";
 
 // wax.eosusa.io dropped (not answering, Nov 2026); waxsweden + eosdac added as tie-breakers.
@@ -9,7 +10,11 @@ const POOL = 12905;
 const LOCK_POS = 153128;
 const AIRDROP_BUDGET = 10_000_000; // SAT issued to smartaadmin1 for the airdrop (tx cde3ce9c…)
 const SAT = SAT_CONTRACT;
-const REFRESH_MS = 60_000;
+const REFRESH_MS = SAT_REFRESH_INTERVAL_MS;
+let lastLoadAt = 0;
+let lastLoadErrors: string[] = [];
+let lastLoadSingleSource = false;
+let refreshInFlight = false;
 const TIMEOUT_MS = 6000;
 const HISTORY_TIMEOUT_MS = 15_000;
 const HISTORY_PAGE = 100;
@@ -42,6 +47,35 @@ const bal = (account: string) =>
 const alcor = <T>(p: string) => withTimeout(ALCOR + p).then((r) => r.json() as Promise<T>);
 
 const set = (k: string, v: string) => document.querySelectorAll<HTMLElement>(`[data-k="${k}"]`).forEach((e) => (e.textContent = v));
+
+function renderDataStatus(announce = false) {
+  const status = document.getElementById("status");
+  if (!status) return;
+  const announcement = document.getElementById("status-announcement");
+  const now = Date.now();
+  const ageMs = lastLoadAt > 0 ? now - lastLoadAt : null;
+  const quality = classifyDataQuality(ageMs, lastLoadErrors.length > 0, lastLoadSingleSource);
+  const labels = {
+    loading: "CONNECTING",
+    live: "LIVE",
+    limited: "LIMITED SOURCE",
+    partial: "PARTIAL",
+    stale: "STALE",
+  } as const;
+  const detail = lastLoadErrors.length
+    ? ` · failed: ${lastLoadErrors.join(", ")}`
+    : lastLoadSingleSource
+      ? " · at least one WAX read had only single-node confirmation"
+      : " · WAX quorum + Alcor";
+  const ageText = ageMs == null ? "" : ` · updated ${new Date(lastLoadAt).toLocaleTimeString()} · ${Math.max(0, Math.floor(ageMs / 1_000))}s ago`;
+  const nextText = ageMs == null ? "" : ` · next refresh in ${Math.max(0, Math.ceil((lastLoadAt + REFRESH_MS - now) / 1_000))}s`;
+  const refreshingText = refreshInFlight ? " · refreshing" : "";
+  status.className = quality === "live" ? "status" : quality === "partial" ? "status err" : "status warn";
+  status.textContent = `${labels[quality]}${ageText}${nextText}${refreshingText}${quality === "loading" ? "" : detail}`;
+  if (announce && announcement) {
+    announcement.textContent = `SAT dashboard: ${labels[quality].toLowerCase()}. ${ageMs == null ? "Waiting for first data." : `Last refresh ${Math.floor(ageMs / 1_000)} seconds ago.`}${detail.replaceAll(" · ", ". ")}`;
+  }
+}
 
 function bars(id: string, items: [string, number][]) {
   const el = document.getElementById(id)!;
@@ -83,7 +117,6 @@ interface Tok { quantity: number; symbol: string }
 interface Pool { priceB: number; fee: number; tokenA: Tok; tokenB: Tok; tvlUSD: number; volumeUSD24: number; volumeUSDWeek: number; volumeA24?: number; volumeAWeek?: number }
 
 async function load() {
-  const status = document.getElementById("status")!;
   const errs: string[] = [];
   singleSource = false;
   const run = async (name: string, f: () => Promise<void>) => { try { await f(); } catch { errs.push(name); } };
@@ -175,10 +208,10 @@ async function load() {
     document.getElementById("satpools-body")!.innerHTML = list.map((p) => `<tr><td><a href="https://wax.alcor.exchange/swap?pool=${p.id}" target="_blank" rel="noopener">${p.id}${NEWTAB}</a></td><td>${esc(p.pair)}</td><td class="r">${feePct(p.fee)}%</td><td class="r">${fmt(p.sat)}</td><td class="r">${fmt(p.other, 6)} ${esc(p.otherSym)}</td></tr>`).join("") || `<tr><td colspan="5">None found</td></tr>`;
   });
 
-  const t = new Date().toLocaleTimeString();
-  const warn = singleSource ? " Some values came from a single WAX node (others failed or disagreed)." : "";
-  status.className = errs.length ? "status err" : "status";
-  status.textContent = errs.length ? `Updated ${t}. Couldn't load: ${errs.join(", ")} — retrying in 60 s.${warn}` : `Live · updated ${t} · refreshes every 60 s.${warn}`;
+  lastLoadAt = Date.now();
+  lastLoadErrors = errs;
+  lastLoadSingleSource = singleSource;
+  renderDataStatus(true);
 }
 
 async function lastIrreversible(): Promise<number> {
@@ -291,17 +324,44 @@ function maybeAirdrop() {
   }
 }
 
-// Single-flight refresh that pauses while the tab is hidden.
+// Single-flight live refresh. Active tabs pull every 30 seconds; hidden tabs
+// stop polling and immediately refresh when visible again.
 let running: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 function tick() {
   clearTimeout(timer);
   if (document.hidden) return;
-  if (!running) running = load().finally(() => { running = null; });
+  if (!running) {
+    refreshInFlight = true;
+    renderDataStatus();
+    const button = document.getElementById("refresh-now") as HTMLButtonElement | null;
+    if (button) button.disabled = true;
+    running = load()
+      .catch(() => {
+        lastLoadErrors = [...lastLoadErrors, "dashboard refresh"];
+        lastLoadSingleSource = singleSource;
+        renderDataStatus(true);
+      })
+      .finally(() => {
+        running = null;
+        refreshInFlight = false;
+        renderDataStatus();
+        if (button) button.disabled = false;
+        if (!document.hidden) timer = setTimeout(tick, REFRESH_MS);
+      });
+  }
   maybeAirdrop();
-  running.then(() => { clearTimeout(timer); if (!document.hidden) timer = setTimeout(tick, REFRESH_MS); });
 }
-document.addEventListener("visibilitychange", () => { if (document.hidden) clearTimeout(timer); else tick(); });
+document.getElementById("refresh-now")?.addEventListener("click", tick);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    clearTimeout(timer);
+  } else {
+    renderDataStatus();
+    tick();
+  }
+});
+window.setInterval(() => renderDataStatus(), 1_000);
 let refreshStakeUi: () => Promise<void> = async () => {};
 void import("./stake").then((m) => {
   refreshStakeUi = m.refreshStakeUi;
