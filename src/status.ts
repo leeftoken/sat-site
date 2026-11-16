@@ -20,3 +20,9 @@ export function classifyDataQuality(
   if (singleSource) return "limited";
   return "live";
 }
+
+/** Healthy data stays fast; repeated degraded reads back off to protect public RPCs. */
+export function nextRefreshDelayMs(degradedStreak = 0): number {
+  const step = Math.min(2, Math.max(0, Math.floor(Number.isFinite(degradedStreak) ? degradedStreak : 0)));
+  return SAT_REFRESH_INTERVAL_MS * (2 ** step);
+}
