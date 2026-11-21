@@ -241,7 +241,7 @@ export function airdropTableHtml(rows: AirdropTransfer[]): string {
   }).join("");
 }
 
-/** Intended stake account. Not created. Production wasm must match before any UI treats it as live. */
+/** Stake account (live since 14 Nov 2026). Production wasm must match before any UI treats it as live. */
 export const STAKE_ACCOUNT = "smartastake1";
 export const STAKE_AIRDROP_ACCOUNT = "smartadrop11";
 export const STAKE_CODE_SHA256 = "557f65faa57a6cdfa500f3ae218fd45db6009314ba399ae55e16e7a90a9c3d79";

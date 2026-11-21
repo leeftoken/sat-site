@@ -92,7 +92,7 @@ function bars(id: string, items: [string, number][]) {
   el.querySelectorAll<HTMLElement>(".f").forEach((f) => (f.style.width = `${f.dataset.w}%`));
 }
 
-bars("alloc", [["Locked LP (planned)", 35], ["User rewards, 4 years (planned)", 25], ["Treasury, multisig (planned)", 15], ["Team, vested (planned)", 15], ["LEEF community airdrop (sent)", 10]]);
+bars("alloc", [["Locked LP (pools + 4-year vesting)", 35], ["User rewards (4-year vesting + airdrop fund)", 25], ["Treasury (4-year vesting)", 15], ["Team (1-year cliff, 3-year vesting)", 15], ["LEEF community airdrop (sent)", 10]]);
 
 document.getElementById("stake-bounds")!.innerHTML = stakeBoundsHtml();
 document.getElementById("stake-blocked")!.textContent = STAKE_BLOCKED.join(", ");
@@ -104,6 +104,9 @@ const ACCOUNTS: [string, string][] = [
   ["smartaadmin1", "SAT admin and issuer; verify the live authority threshold and signers on-chain. Sent the first SAT airdrop (remainder held here)."],
   ["smartafees11", "Receives LP fees and owns position 153128; verify its live signer threshold on-chain."],
   ["smartabot111", "Bot account with limited permission"],
+  ["smartavest11", "Vesting contract: treasury, team, LP and user-reward streams (claims are permissionless and pay only the fixed beneficiary)"],
+  ["smartastake1", "Staking and governance contract: stake, rewards, unstake cooldown, proposals"],
+  ["smartadrop11", "Airdrop fund: 1.25M SAT staked in smartastake1; it can move only through a passed airdrop proposal"],
   ["leefmaincorp", "LEEF token contract"],
   ["swap.alcor", "Alcor CLMM: pools, swaps, lockpos"],
   ["wrap.alcor", "USDT used for USDT plans"],
@@ -132,15 +135,16 @@ async function load() {
 
   await Promise.all([
     run("token stats", async () => {
-      const [s, admin, inAlcor, pos] = await Promise.all([
+      const [s, admin, inAlcor, vest, stake, pos] = await Promise.all([
         rpc<Record<string, { supply: string; max_supply: string }>>("/v1/chain/get_currency_stats", { code: SAT, symbol: "SAT" }),
-        bal("smartaadmin1"), bal("swap.alcor"),
+        bal("smartaadmin1"), bal("swap.alcor"), bal("smartavest11"), bal("smartastake1"),
         alcor<{ id: number; amountB: string; isLocked: boolean }[]>("/account/smartafees11/positions"),
       ]);
       const lp = pos.find((p) => Number(p.id) === LOCK_POS);
       const locked = lp && lp.isLocked ? amt(lp.amountB) : 0;
       const t = tokenomics(amt(s.SAT.supply), amt(s.SAT.max_supply), locked, admin);
       const otherPools = Math.max(0, inAlcor - locked);
+      const holders = Math.max(0, t.other - otherPools - vest - stake);
       const sent = Math.max(0, AIRDROP_BUDGET - admin);
       set("supply", fmt(t.issued)); set("max", `of ${fmt(t.max)} max`);
       set("airdrop", fmt(admin, 4)); set("airdrop-amount", `${fmt(AIRDROP_BUDGET)} SAT budget. Sent: ${fmt(sent, 4)} SAT; still in smartaadmin1: ${fmt(admin, 4)} SAT (live).`);
@@ -152,8 +156,10 @@ async function load() {
       set("t-otherpools", `${fmt(otherPools)} SAT in other Alcor positions (not locked)`);
       set("t-locked", `${fmt(t.lockedPctMax, 1)}% of max supply · ${fmt(t.lockedPctIssued, 1)}% of issued supply`);
       set("t-admin", `${fmt(admin, 4)} SAT remaining in smartaadmin1 after the first airdrop`);
-      set("t-other", t.other - otherPools > 0 ? `${fmt(t.other - otherPools)} SAT (includes airdrop recipients)` : "None");
-      bars("issued", [["Locked LP (position " + LOCK_POS + ")", t.lockedPctMax], ["Other Alcor pools", t.max ? (otherPools / t.max) * 100 : 0], ["Airdrop remainder (smartaadmin1)", t.max ? (admin / t.max) * 100 : 0], ["Other holders (incl. airdrop)", t.max ? (Math.max(0, t.other - otherPools) / t.max) * 100 : 0], ["Not issued (mintable)", t.max ? (t.mintable / t.max) * 100 : 0]]);
+      set("t-vest", `${fmt(vest)} SAT still locked in the vesting contract smartavest11`);
+      set("t-stake", `${fmt(stake)} SAT in the staking contract smartastake1 (stakes, cooling and reward pot)`);
+      set("t-other", holders > 0 ? `${fmt(holders)} SAT (includes airdrop recipients)` : "None");
+      bars("issued", [["Locked LP (position " + LOCK_POS + ")", t.lockedPctMax], ["Other Alcor pools", t.max ? (otherPools / t.max) * 100 : 0], ["Vesting (smartavest11)", t.max ? (vest / t.max) * 100 : 0], ["Staking (smartastake1)", t.max ? (stake / t.max) * 100 : 0], ["Airdrop remainder (smartaadmin1)", t.max ? (admin / t.max) * 100 : 0], ["Other holders (incl. airdrop)", t.max ? (holders / t.max) * 100 : 0], ["Not issued (mintable)", t.max ? (t.mintable / t.max) * 100 : 0]]);
     }),
     run("prices", async () => {
       const [l, w] = await Promise.all([alcor<{ usd_price: number; system_price: number }>("/tokens/leef-leefmaincorp"), alcor<{ usd_price: number }>("/tokens/wax-eosio.token")]);

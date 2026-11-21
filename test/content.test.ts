@@ -17,10 +17,10 @@ describe("public copy", () => {
     expect(html).toMatch(/706 wallets/);
   });
 
-  it("says SAT is a WAX token, not Bitcoin satoshis, and that 20M of 100M is issued", () => {
+  it("says SAT is a WAX token, not Bitcoin satoshis, and that all 100M is issued", () => {
     expect(html).toMatch(/not Bitcoin satoshis/);
     expect(html).toMatch(/SAT@sattoken1111/);
-    expect(html).toMatch(/20,000,000 SAT is issued today/);
+    expect(html).toMatch(/All 100,000,000 SAT has been issued/);
     expect(html).toMatch(/100,000,000/);
   });
 
